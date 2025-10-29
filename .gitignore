@@ -4,8 +4,6 @@ objects_smb/
 objects_tcp/
 .idea/
 .qt/
-*.so
-dist/
 AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
