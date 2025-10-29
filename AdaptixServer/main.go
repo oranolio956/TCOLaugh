@@ -7,25 +7,26 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
 const VERSION = "0.9"
 
 func main() {
-	fmt.Printf("\n[===== Adaptix Framework v%v =====]\n\n", VERSION)
+	fmt.Printf("\n[===== Oranolio Framework v%v =====]\n\n", VERSION)
 
 	var (
 		err          error
-		host         = flag.String("i", "0.0.0.0", "Teamserver listen interface")
-		port         = flag.Int("p", 0, "Teamserver handler port")
-		endpoint     = flag.String("e", "", "Teamserver URI endpoint")
-		password     = flag.String("pw", "", "Teamserver password")
-		certPath     = flag.String("sc", "", "Path to the SSL certificate")
-		keyPath      = flag.String("sk", "", "Path to the SSL key")
-		extenderPath = flag.String("ex", "", "Path to the extender file")
-		debug        = flag.Bool("debug", false, "Enable debug mode")
-		profilePath  = flag.String("profile", "", "Path to JSON profile file")
+		host         = flag.String("i", getEnv("HOST", "0.0.0.0"), "Teamserver listen interface")
+		port         = flag.Int("p", getEnvInt("PORT", 0), "Teamserver handler port")
+		endpoint     = flag.String("e", getEnv("ENDPOINT", ""), "Teamserver URI endpoint")
+		password     = flag.String("pw", getEnv("PASSWORD", ""), "Teamserver password")
+		certPath     = flag.String("sc", getEnv("CERT_PATH", ""), "Path to the SSL certificate")
+		keyPath      = flag.String("sk", getEnv("KEY_PATH", ""), "Path to the SSL key")
+		extenderPath = flag.String("ex", getEnv("EXTENDER_PATH", ""), "Path to the extender file")
+		debug        = flag.Bool("debug", getEnvBool("DEBUG", false), "Enable debug mode")
+		profilePath  = flag.String("profile", getEnv("PROFILE_PATH", ""), "Path to JSON profile file")
 	)
 
 	flag.Usage = func() {
@@ -73,4 +74,30 @@ func main() {
 	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 
 	ts.Start()
+}
+
+// Helper functions for environment variables
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
+		}
+	}
+	return defaultValue
 }
