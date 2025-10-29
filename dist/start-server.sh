@@ -7,8 +7,7 @@ PORT=${PORT:-10000}
 
 # Start the server with command-line flags
 # This ensures compatibility with Render's dynamic port assignment
-# Remove any profile.json files to force command-line usage
-rm -f /app/profile.json
+# No profile.json file is copied to container, forcing command-line usage
 
 exec /app/adaptixserver \
     -i 0.0.0.0 \

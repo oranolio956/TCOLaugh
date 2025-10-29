@@ -10,7 +10,7 @@ WORKDIR /app
 
 # Copy the built server and extenders
 COPY dist/adaptixserver /app/
-COPY dist/profile.json /app/
+# Note: profile.json is not copied to force command-line argument usage
 COPY dist/404page.html /app/
 COPY dist/server.rsa.crt /app/
 COPY dist/server.rsa.key /app/
