@@ -2,10 +2,7 @@ package database
 
 import (
 	"database/sql"
-	"os"
-	"strings"
 
-	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -21,19 +18,9 @@ func NewDatabase(dbPath string) (*DBMS, error) {
 		exists: true,
 	}
 
-	// Check if we should use PostgreSQL (for web deployment)
-	if os.Getenv("DATABASE_URL") != "" {
-		// Use PostgreSQL for web deployment
-		dbms.database, err = sql.Open("postgres", os.Getenv("DATABASE_URL"))
-		if err != nil {
-			dbms.exists = false
-		}
-	} else {
-		// Use SQLite for local development
-		dbms.database, err = sql.Open("sqlite3", dbPath)
-		if err != nil {
-			dbms.exists = false
-		}
+	dbms.database, err = sql.Open("sqlite3", dbPath)
+	if err != nil {
+		dbms.exists = false
 	}
 
 	if dbms.exists {
@@ -51,301 +38,146 @@ func (dbms *DBMS) DatabaseInit() error {
 		createTableQuery string
 	)
 
-	// Check if we're using PostgreSQL
-	isPostgres := os.Getenv("DATABASE_URL") != ""
-
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
-			"ListenerName" TEXT NOT NULL UNIQUE, 
-			"ListenerRegName" TEXT NOT NULL,
-			"ListenerConfig" TEXT NOT NULL,
-			"Watermark" TEXT NOT NULL,
-			"CustomData" BYTEA
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
-			"ListenerName" TEXT NOT NULL UNIQUE, 
-			"ListenerRegName" TEXT NOT NULL,
-			"ListenerConfig" TEXT NOT NULL,
-			"Watermark" TEXT NOT NULL,
-			"CustomData" BLOB
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Listeners" (
+    	"ListenerName" TEXT NOT NULL UNIQUE, 
+    	"ListenerRegName" TEXT NOT NULL,
+    	"ListenerConfig" TEXT NOT NULL,
+    	"Watermark" TEXT NOT NULL,
+    	"CustomData" BLOB
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
-			"Id" SERIAL PRIMARY KEY,
-			"Username" TEXT NOT NULL,
-			"Message" TEXT NOT NULL,
-			"Date" BIGINT
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
-			"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"Username" TEXT NOT NULL,
-			"Message" TEXT NOT NULL,
-			"Date" BIGINT
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Chat" (
+    	"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"Username" TEXT NOT NULL,
+    	"Message" TEXT NOT NULL,
+    	"Date" BIGINT
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
-			"FileId" TEXT NOT NULL UNIQUE, 
-			"AgentId" TEXT NOT NULL,
-			"AgentName" TEXT NOT NULL,
-			"User" TEXT NOT NULL,
-			"Computer" TEXT NOT NULL,
-			"RemotePath" TEXT NOT NULL,
-			"LocalPath" TEXT NOT NULL,
-			"TotalSize" INTEGER,
-			"RecvSize" INTEGER,
-			"Date" BIGINT,
-			"State" INTEGER
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
-			"FileId" TEXT NOT NULL UNIQUE, 
-			"AgentId" TEXT NOT NULL,
-			"AgentName" TEXT NOT NULL,
-			"User" TEXT NOT NULL,
-			"Computer" TEXT NOT NULL,
-			"RemotePath" TEXT NOT NULL,
-			"LocalPath" TEXT NOT NULL,
-			"TotalSize" INTEGER,
-			"RecvSize" INTEGER,
-			"Date" BIGINT,
-			"State" INTEGER
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Downloads" (
+    	"FileId" TEXT NOT NULL UNIQUE, 
+    	"AgentId" TEXT NOT NULL,
+    	"AgentName" TEXT NOT NULL,
+    	"User" TEXT NOT NULL,
+    	"Computer" TEXT NOT NULL,
+    	"RemotePath" TEXT NOT NULL,
+    	"LocalPath" TEXT NOT NULL,
+    	"TotalSize" INTEGER,
+    	"RecvSize" INTEGER,
+    	"Date" BIGINT,
+    	"State" INTEGER
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Screenshots" (
-			"ScreenId" TEXT NOT NULL UNIQUE, 
-			"User" TEXT NOT NULL,
-			"Computer" TEXT NOT NULL,
-			"LocalPath" TEXT NOT NULL,
-			"Note" TEXT,
-			"Date" BIGINT
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Screenshots" (
-			"ScreenId" TEXT NOT NULL UNIQUE, 
-			"User" TEXT NOT NULL,
-			"Computer" TEXT NOT NULL,
-			"LocalPath" TEXT NOT NULL,
-			"Note" TEXT,
-			"Date" BIGINT
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Screenshots" (
+    	"ScreenId" TEXT NOT NULL UNIQUE, 
+    	"User" TEXT NOT NULL,
+    	"Computer" TEXT NOT NULL,
+    	"LocalPath" TEXT NOT NULL,
+    	"Note" TEXT,
+    	"Date" BIGINT
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Agents" (
-			"Id" TEXT NOT NULL UNIQUE, 
-			"Crc" TEXT NOT NULL,
-			"Name" TEXT NOT NULL,
-			"SessionKey" BYTEA NOT NULL,
-			"Listener" TEXT NOT NULL,
-			"Async" INTEGER,
-			"ExternalIP" TEXT,
-			"InternalIP" TEXT,
-			"GmtOffset" INTEGER,
-			"Sleep" INTEGER,
-			"Jitter" INTEGER,
-			"Pid" TEXT,
-			"Tid" TEXT,
-			"Arch" TEXT,
-			"Elevated" INTEGER,
-			"Process" TEXT,
-			"Os" INTEGER,
-			"OsDesc" TEXT,
-			"Domain" TEXT,
-			"Computer" TEXT,
-			"Username" TEXT,
-			"Impersonated" TEXT,
-			"OemCP" INTEGER,
-			"ACP" INTEGER,
-			"CreateTime" BIGINT,
-			"LastTick" INTEGER,
-			"WorkingTime" INTEGER,	
-			"KillDate" INTEGER,
-			"Tags" TEXT,
-			"Mark" TEXT,
-			"Color" TEXT,
-			"TargetId" TEXT
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Agents" (
-			"Id" TEXT NOT NULL UNIQUE, 
-			"Crc" TEXT NOT NULL,
-			"Name" TEXT NOT NULL,
-			"SessionKey" BLOB NOT NULL,
-			"Listener" TEXT NOT NULL,
-			"Async" INTEGER,
-			"ExternalIP" TEXT,
-			"InternalIP" TEXT,
-			"GmtOffset" INTEGER,
-			"Sleep" INTEGER,
-			"Jitter" INTEGER,
-			"Pid" TEXT,
-			"Tid" TEXT,
-			"Arch" TEXT,
-			"Elevated" INTEGER,
-			"Process" TEXT,
-			"Os" INTEGER,
-			"OsDesc" TEXT,
-			"Domain" TEXT,
-			"Computer" TEXT,
-			"Username" TEXT,
-			"Impersonated" TEXT,
-			"OemCP" INTEGER,
-			"ACP" INTEGER,
-			"CreateTime" BIGINT,
-			"LastTick" INTEGER,
-			"WorkingTime" INTEGER,	
-			"KillDate" INTEGER,
-			"Tags" TEXT,
-			"Mark" TEXT,
-			"Color" TEXT,
-			"TargetId" TEXT
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Agents" (
+    	"Id" TEXT NOT NULL UNIQUE, 
+    	"Crc" TEXT NOT NULL,
+    	"Name" TEXT NOT NULL,
+    	"SessionKey" BLOB NOT NULL,
+    	"Listener" TEXT NOT NULL,
+    	"Async" INTEGER,
+    	"ExternalIP" TEXT,
+    	"InternalIP" TEXT,
+    	"GmtOffset" INTEGER,
+    	"Sleep" INTEGER,
+    	"Jitter" INTEGER,
+    	"Pid" TEXT,
+    	"Tid" TEXT,
+    	"Arch" TEXT,
+    	"Elevated" INTEGER,
+    	"Process" TEXT,
+    	"Os" INTEGER,
+    	"OsDesc" TEXT,
+    	"Domain" TEXT,
+    	"Computer" TEXT,
+    	"Username" TEXT,
+    	"Impersonated" TEXT,
+    	"OemCP" INTEGER,
+    	"ACP" INTEGER,
+    	"CreateTime" BIGINT,
+    	"LastTick" INTEGER,
+    	"WorkingTime" INTEGER,	
+    	"KillDate" INTEGER,
+    	"Tags" TEXT,
+    	"Mark" TEXT,
+    	"Color" TEXT,
+    	"TargetId" TEXT
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
-			"TaskId" TEXT NOT NULL UNIQUE, 
-			"AgentId" TEXT NOT NULL,
-			"TaskType" INTEGER,
-			"Client" TEXT,
-			"User" TEXT,
-			"Computer" TEXT,
-			"StartDate" BIGINT,
-			"FinishDate" BIGINT,
-			"CommandLine" TEXT NOT NULL,
-			"MessageType" INTEGER,
-			"Message" TEXT,
-			"ClearText" TEXT,
-			"Completed" INTEGER
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
-			"TaskId" TEXT NOT NULL UNIQUE, 
-			"AgentId" TEXT NOT NULL,
-			"TaskType" INTEGER,
-			"Client" TEXT,
-			"User" TEXT,
-			"Computer" TEXT,
-			"StartDate" BIGINT,
-			"FinishDate" BIGINT,
-			"CommandLine" TEXT NOT NULL,
-			"MessageType" INTEGER,
-			"Message" TEXT,
-			"ClearText" TEXT,
-			"Completed" INTEGER
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
+    	"TaskId" TEXT NOT NULL UNIQUE, 
+    	"AgentId" TEXT NOT NULL,
+    	"TaskType" INTEGER,
+    	"Client" TEXT,
+    	"User" TEXT,
+    	"Computer" TEXT,
+    	"StartDate" BIGINT,
+    	"FinishDate" BIGINT,
+    	"CommandLine" TEXT NOT NULL,
+    	"MessageType" INTEGER,
+    	"Message" TEXT,
+    	"ClearText" TEXT,
+    	"Completed" INTEGER
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Consoles" (
-			"Id" SERIAL PRIMARY KEY,
-			"AgentId" TEXT NOT NULL,
-			"Packet" BYTEA
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Consoles" (
-			"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"AgentId" TEXT NOT NULL,
-			"Packet" BLOB
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Consoles" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"AgentId" TEXT NOT NULL,
+    	"Packet" BLOB
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Pivots" (
-			"Id" SERIAL PRIMARY KEY,
-			"PivotId" TEXT NOT NULL,
-			"PivotName" TEXT NOT NULL,
-			"ParentAgentId" TEXT NOT NULL,
-			"ChildAgentId" TEXT NOT NULL
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Pivots" (
-			"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"PivotId" TEXT NOT NULL,
-			"PivotName" TEXT NOT NULL,
-			"ParentAgentId" TEXT NOT NULL,
-			"ChildAgentId" TEXT NOT NULL
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Pivots" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"PivotId" TEXT NOT NULL,
+    	"PivotName" TEXT NOT NULL,
+    	"ParentAgentId" TEXT NOT NULL,
+    	"ChildAgentId" TEXT NOT NULL
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Credentials" (
-			"Id" SERIAL PRIMARY KEY,
-			"CredId" TEXT NOT NULL,
-			"Username" TEXT,
-			"Password" TEXT,
-			"Realm" TEXT,
-			"Type" TEXT,
-			"Tag" TEXT,
-			"Date" BIGINT,
-			"Storage" TEXT,
-			"AgentId" TEXT,
-			"Host" TEXT
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Credentials" (
-			"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"CredId" TEXT NOT NULL,
-			"Username" TEXT,
-			"Password" TEXT,
-			"Realm" TEXT,
-			"Type" TEXT,
-			"Tag" TEXT,
-			"Date" BIGINT,
-			"Storage" TEXT,
-			"AgentId" TEXT,
-			"Host" TEXT
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Credentials" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"CredId" TEXT NOT NULL,
+    	"Username" TEXT,
+    	"Password" TEXT,
+    	"Realm" TEXT,
+    	"Type" TEXT,
+    	"Tag" TEXT,
+    	"Date" BIGINT,
+    	"Storage" TEXT,
+		"AgentId" TEXT,
+		"Host" TEXT
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
-	if isPostgres {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Targets" (
-			"Id" SERIAL PRIMARY KEY,
-			"TargetId" TEXT NOT NULL,
-			"Computer" TEXT,
-			"Domain" TEXT,
-			"Address" TEXT,
-			"Os" INTEGER,
-			"OsDesk" TEXT,
-			"Tag" TEXT,
-			"Info" TEXT,
-			"Date" BIGINT,
-			"Alive" BOOLEAN,
-			"Agents" TEXT
-		);`
-	} else {
-		createTableQuery = `CREATE TABLE IF NOT EXISTS "Targets" (
-			"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
-			"TargetId" TEXT NOT NULL,
-			"Computer" TEXT,
-			"Domain" TEXT,
-			"Address" TEXT,
-			"Os" INTEGER,
-			"OsDesk" TEXT,
-			"Tag" TEXT,
-			"Info" TEXT,
-			"Date" BIGINT,
-			"Alive" BOOLEAN,
-			"Agents" TEXT
-		);`
-	}
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Targets" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+    	"TargetId" TEXT NOT NULL,
+    	"Computer" TEXT,
+    	"Domain" TEXT,
+    	"Address" TEXT,
+    	"Os" INTEGER,
+    	"OsDesk" TEXT,
+    	"Tag" TEXT,
+    	"Info" TEXT,
+    	"Date" BIGINT,
+		"Alive" BOOLEAN,
+		"Agents" TEXT
+    );`
 	_, err = dbms.database.Exec(createTableQuery)
 
 	return err

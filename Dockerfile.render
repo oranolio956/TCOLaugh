@@ -1,0 +1,26 @@
+FROM ubuntu:24.04
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built server and extenders
+COPY dist/adaptixserver /app/
+COPY dist/profile.json /app/
+COPY dist/404page.html /app/
+COPY dist/server.rsa.crt /app/
+COPY dist/server.rsa.key /app/
+COPY dist/extenders /app/extenders
+
+# Make server executable
+RUN chmod +x /app/adaptixserver
+
+# Expose port (Render uses PORT env var, defaults to 10000)
+EXPOSE 10000
+
+# Run the server with custom port from environment
+CMD ["/bin/sh", "-c", "/app/adaptixserver -i 0.0.0.0 -p ${PORT:-10000} -e /tcolaugh -pw TCOLaugh2025!Secure -sc server.rsa.crt -sk server.rsa.key"]

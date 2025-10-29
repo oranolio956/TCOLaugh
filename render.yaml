@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: tcolaugh-c2-server
+    env: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 10000
+    healthCheckPath: /health
