@@ -172,6 +172,16 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Key = tsProfile.Key
 	connector.Cert = tsProfile.Cert
 
+	// Health check endpoint for Render deployment
+	connector.Engine.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "online",
+			"version": "v0.9",
+			"endpoint": tsProfile.Endpoint,
+			"message": "TCOLaugh C2 Server Ready",
+		})
+	})
+
 	connector.Engine.POST(tsProfile.Endpoint+"/login", default404Middleware(tsResponse), connector.tcLogin)
 	connector.Engine.POST(tsProfile.Endpoint+"/refresh", default404Middleware(tsResponse), token.RefreshTokenHandler)
 	connector.Engine.POST(tsProfile.Endpoint+"/sync", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.tcSync)
