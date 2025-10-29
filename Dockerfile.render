@@ -16,11 +16,12 @@ COPY dist/server.rsa.crt /app/
 COPY dist/server.rsa.key /app/
 COPY dist/extenders /app/extenders
 
-# Make server executable
-RUN chmod +x /app/adaptixserver
+# Copy startup script
+COPY dist/start-server.sh /app/
+RUN chmod +x /app/start-server.sh
 
 # Expose port (Render uses PORT env var, defaults to 10000)
 EXPOSE 10000
 
-# Run the server with custom port from environment and improved stability
-CMD ["/bin/sh", "-c", "/app/adaptixserver -i 0.0.0.0 -p ${PORT:-10000} -e /tcolaugh -pw TCOLaugh2025!Secure -sc server.rsa.crt -sk server.rsa.key -ah -ce"]
+# Run the server using the startup script that handles PORT env var
+CMD ["/app/start-server.sh"]
