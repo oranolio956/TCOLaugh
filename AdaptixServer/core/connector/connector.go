@@ -235,6 +235,15 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/stop", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelStop)
 	connector.Engine.POST(tsProfile.Endpoint+"/tunnel/set/info", token.ValidateAccessToken(), default404Middleware(tsResponse), connector.TcTunnelSetIno)
 
+	// Health check endpoint for deployment platforms
+	connector.Engine.GET("/api/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "healthy",
+			"service": "oranolio-backend",
+			"version": "0.9",
+		})
+	})
+
 	connector.Engine.NoRoute(default404Middleware(tsResponse), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
 
 	return connector, nil

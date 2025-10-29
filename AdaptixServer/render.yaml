@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: oranolio-backend
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: oregon
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 10000
+      - key: ENDPOINT
+        value: /
+      - key: DEBUG
+        value: false
+      - key: PASSWORD
+        generateValue: true
+    healthCheckPath: /api/health
+    autoDeploy: true
+
+databases:
+  - name: oranolio-db
+    plan: starter
+    region: oregon
+    databaseName: oranolio
+    user: oranolio_user

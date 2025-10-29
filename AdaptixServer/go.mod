@@ -7,8 +7,8 @@ require (
 	github.com/gin-gonic/gin v1.11.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/gorilla/websocket v1.5.3
-	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/lib/pq v1.10.9
+	github.com/mattn/go-sqlite3 v1.14.32
 	golang.org/x/image v0.31.0
 )
 
@@ -45,5 +45,4 @@ require (
 	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/tools v0.37.0 // indirect
 	google.golang.org/protobuf v1.36.9 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
