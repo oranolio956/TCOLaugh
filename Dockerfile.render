@@ -1,0 +1,26 @@
+FROM ubuntu:24.04
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3t64 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the built server and extenders
+COPY dist/adaptixserver /app/
+COPY dist/profile.json /app/
+COPY dist/404page.html /app/
+COPY dist/server.rsa.crt /app/
+COPY dist/server.rsa.key /app/
+COPY dist/extenders /app/extenders
+
+# Make server executable
+RUN chmod +x /app/adaptixserver
+
+# Expose port
+EXPOSE 4321
+
+# Run the server
+CMD ["/app/adaptixserver", "-profile", "/app/profile.json"]
