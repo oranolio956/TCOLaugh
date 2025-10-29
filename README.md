@@ -1,11 +1,11 @@
-# 🕷️ TCOLaugh - Command & Control Framework
+# Render CLI
 
-> **Based on AdaptixC2 v0.9** - A powerful post-exploitation and adversarial emulation framework for authorized penetration testing.
+## Installation
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-red.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Platform](https://img.shields.io/badge/Platform-Cross--Platform-darkred.svg)](https://github.com/oranolio956/TCOLaugh)
+- [Homebrew](https://render.com/docs/cli#homebrew-macos-linux)
+- [Direct Download](https://render.com/docs/cli#direct-download)
 
----
+## Documentation
 
 ## ⚠️ **LEGAL WARNING**
 
