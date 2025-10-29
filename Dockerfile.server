@@ -1,0 +1,61 @@
+# Multi-stage build for Oranolio C2 Server
+FROM golang:1.24.4-bookworm AS builder
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    mingw-w64 \
+    make \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files
+COPY AdaptixServer/go.mod AdaptixServer/go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY AdaptixServer/ ./
+
+# Build the server
+RUN CGO_ENABLED=1 GOOS=linux go build -buildvcs=false -ldflags="-s -w" -o adaptixserver .
+
+# Final stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy binary from builder stage
+COPY --from=builder /app/adaptixserver .
+
+# Copy profile and other config files
+COPY AdaptixServer/profile.json ./
+COPY AdaptixServer/404page.html ./
+
+# Create extenders directory
+RUN mkdir -p extenders
+
+# Copy extenders
+COPY Extenders/ ./extenders/
+
+# Expose port
+EXPOSE 4321
+
+# Set environment variables
+ENV ADAPTIX_INTERFACE=0.0.0.0
+ENV ADAPTIX_PORT=4321
+ENV ADAPTIX_ENDPOINT=/endpoint
+ENV ADAPTIX_PASSWORD=Oranolio2024!Secure
+ENV ADAPTIX_DEBUG=false
+
+# Start the server
+CMD ["./adaptixserver", "-profile", "profile.json"]
