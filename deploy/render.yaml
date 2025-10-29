@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: oranolio-c2-server
+    env: docker
+    dockerfilePath: ./Dockerfile.server
+    plan: starter
+    region: oregon
+    envVars:
+      - key: ADAPTIX_INTERFACE
+        value: 0.0.0.0
+      - key: ADAPTIX_PORT
+        value: 4321
+      - key: ADAPTIX_ENDPOINT
+        value: /endpoint
+      - key: ADAPTIX_PASSWORD
+        value: Oranolio2024!Secure
+      - key: ADAPTIX_DEBUG
+        value: false

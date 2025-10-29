@@ -1,0 +1,16 @@
+{
+  "name": "oranolio-c2-server",
+  "version": "1.0.0",
+  "description": "Oranolio C2 Framework Server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "jsonwebtoken": "^9.0.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5"
+  }
+}
