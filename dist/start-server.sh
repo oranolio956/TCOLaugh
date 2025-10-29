@@ -2,8 +2,8 @@
 # Startup script for AdaptixServer on Render
 # Reads PORT from environment and starts server with proper configuration
 
-# Default to Render's PORT env var (usually 10000)
-PORT=${PORT:-10000}
+# Use Render's PORT env var (4321 for this service)
+PORT=${PORT:-4321}
 
 # Update profile.json with the correct port
 sed -i "s/\"port\": 10000/\"port\": $PORT/g" /app/profile.json
