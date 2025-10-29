@@ -17,8 +17,63 @@ grep "port" /app/profile.json
 
 # For Render deployment, disable SSL since load balancer handles it
 # This allows health checks to work via HTTP
-sed -i 's/"ssl_enabled": true/"ssl_enabled": false/g' /app/profile.json
+echo "Disabling SSL for Render deployment..."
 
-# Start the server using the profile
-echo "Starting server..."
-exec /app/adaptixserver -profile /app/profile.json
+# Create a new profile without SSL configuration
+cat > /app/profile_render.json << 'EOF'
+{
+  "Teamserver": {
+    "interface": "0.0.0.0",
+    "port": 10000,
+    "endpoint": "/tcolaugh",
+    "password": "pass",
+    "only_password": true,
+    "operators": {
+      "operator1": "pass1",
+      "operator2": "pass2"
+    },
+    "ssl_enabled": false,
+    "cert": "",
+    "key": "",
+    "extenders": [
+      "extenders/listener_beacon_http/config.json",
+      "extenders/listener_beacon_smb/config.json",
+      "extenders/listener_beacon_tcp/config.json",
+      "extenders/agent_beacon/config.json",
+      "extenders/listener_gopher_tcp/config.json",
+      "extenders/agent_gopher/config.json"
+    ],
+    "access_token_live_hours": 12,
+    "refresh_token_live_hours": 168
+  },
+  "ServerResponse": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "text/html; charset=UTF-8",
+      "Server": "AdaptixC2",
+      "Adaptix Version": "v0.9"
+    },
+    "page": "404page.html"
+  },
+  "EventCallback": {
+    "Telegram": {
+      "token": "",
+      "chats_id": []
+    },
+    "Webhooks": [
+      {
+      }
+    ],
+    "new_agent_message": "New agent: %type% (%id%)\\n\\n%user% @ %computer% (%internalip%)\\nelevated: %elevated%\\nfrom: %externalip%\\ndomain: %domain%",
+    "new_cred_message": "New secret [%type%]:\\n\\n%username% : %password% (%domain%)\\n\\nStorage: %storage%\\nHost: %host%",
+    "new_download_message": "File saved: %path% [%size%] from %computer% (%user%)"
+  }
+}
+EOF
+
+# Update the port in the new profile
+sed -i "s/\"port\": 10000/\"port\": $PORT/g" /app/profile_render.json
+
+# Start the server using the new profile
+echo "Starting server with HTTP configuration..."
+exec /app/adaptixserver -profile /app/profile_render.json
