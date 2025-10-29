@@ -57,7 +57,7 @@ Fixed server configuration for improved stability and accessibility using both R
 
 ### HTTPS Connection
 ```bash
-curl -k https://tcolaugh-c2.onrender.com/tcolaugh
+curl -k https://tcolaugh-c2.onrender.com:10000/tcolaugh
 ```
 
 ### Health Check
@@ -65,7 +65,7 @@ Visit: `https://tcolaugh-c2.onrender.com/health-check.html` (via Netlify site)
 
 ### Client Connection
 Use AdaptixClient GUI with:
-- **Server URL**: `https://tcolaugh-c2.onrender.com/tcolaugh`
+- **Server URL**: `https://tcolaugh-c2.onrender.com:10000/tcolaugh`
 - **Password**: `TCOLaugh2025!Secure`
 - **Username**: `admin` / Password: `Admin@TCO2025!`
 

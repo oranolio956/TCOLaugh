@@ -75,7 +75,7 @@
         
         <div class="info">
             <h3>Server Information</h3>
-            <div class="endpoint" id="serverUrl">https://tcolaugh-c2.onrender.com/tcolaugh</div>
+            <div class="endpoint" id="serverUrl">https://tcolaugh-c2.onrender.com:10000/tcolaugh</div>
             <div><strong>Status:</strong> <span id="serverStatus">Checking...</span></div>
             <div><strong>Response Time:</strong> <span id="responseTime">-</span></div>
             <div><strong>Last Check:</strong> <span id="lastCheck">-</span></div>
@@ -91,7 +91,7 @@
     </div>
 
     <script>
-        let serverUrl = 'https://tcolaugh-c2.onrender.com/tcolaugh';
+        let serverUrl = 'https://tcolaugh-c2.onrender.com:10000/tcolaugh';
         
         function updateTimestamp() {
             document.getElementById('timestamp').textContent = new Date().toLocaleString();

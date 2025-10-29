@@ -14,7 +14,7 @@
 - **Endpoint:** `/tcolaugh`
 
 ### Cloud Server (Render)
-- **URL:** `https://tcolaugh-c2.onrender.com:4321/tcolaugh`
+- **URL:** `https://tcolaugh-c2.onrender.com:10000/tcolaugh`
 - **Status:** Ready for deployment
 - **Plan:** Free tier (spins down after 15min inactivity)
 
@@ -162,7 +162,7 @@ cd dist
 
 ### Connect Client to Server
 1. Launch AdaptixClient
-2. Enter server URL: `https://YOUR_SERVER:4321/tcolaugh`
+2. Enter server URL: `https://YOUR_SERVER:10000/tcolaugh`
 3. Enter password: `TCOLaugh2025!Secure`
 4. Or use operator credentials
 

@@ -171,7 +171,7 @@ You now have a **Command & Control (C2) framework** that's like a remote control
 **📁 Share Your Setup:**
 ```
 "I have a TCOLaugh C2 framework with:
-- Server: https://tcolaugh-c2.onrender.com/tcolaugh
+- Server: https://tcolaugh-c2.onrender.com:10000/tcolaugh
 - Client: AdaptixClient GUI
 - Agents: Beacon and Gopher agents
 - Phishing: https://tcolaugh-c2-1761732825.netlify.app
@@ -275,7 +275,7 @@ Your TCOLaugh C2 framework is fully operational and ready for AI-assisted develo
 ---
 
 **Framework Status:** ✅ Fully Operational  
-**Server:** https://tcolaugh-c2.onrender.com/tcolaugh  
+**Server:** https://tcolaugh-c2.onrender.com:10000/tcolaugh  
 **Client:** Ready to use  
 **Agents:** Ready to deploy  
 **Phishing:** Ready for campaigns  

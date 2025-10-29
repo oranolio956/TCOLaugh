@@ -39,7 +39,7 @@ This is expected behavior for a secure C2 server. When you connect via HTTPS (wh
 ## How to Connect Properly
 
 ### Using AdaptixClient GUI:
-1. **Server URL**: `https://tcolaugh-c2.onrender.com/tcolaugh`
+1. **Server URL**: `https://tcolaugh-c2.onrender.com:10000/tcolaugh`
 2. **Protocol**: HTTPS (automatically handled)
 3. **Credentials**:
    - Admin: `admin` / `Admin@TCO2025!`
@@ -48,10 +48,10 @@ This is expected behavior for a secure C2 server. When you connect via HTTPS (wh
 ### Testing Connection:
 ```bash
 # This should work (HTTPS)
-curl -k https://tcolaugh-c2.onrender.com/tcolaugh
+curl -k https://tcolaugh-c2.onrender.com:10000/tcolaugh
 
 # This will show the error (HTTP - expected!)
-curl http://tcolaugh-c2.onrender.com/tcolaugh
+curl http://tcolaugh-c2.onrender.com:10000/tcolaugh
 ```
 
 ## Current Status

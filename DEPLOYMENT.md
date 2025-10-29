@@ -57,7 +57,7 @@ curl -X POST https://api.render.com/v1/services \
 
 ### After Deployment
 Your server will be available at:
-`https://tcolaugh-c2.onrender.com/tcolaugh`
+`https://tcolaugh-c2.onrender.com:10000/tcolaugh`
 
 ⚠️ **Note:** Free tier spins down after 15 minutes of inactivity.
 

@@ -32,7 +32,7 @@ cd dist
 ```
 
 ### 3. Connect
-- **Server URL:** `https://YOUR_IP:4321/tcolaugh`
+- **Server URL:** `https://YOUR_IP:10000/tcolaugh`
 - **Password:** `TCOLaugh2025!Secure`
 
 ---
