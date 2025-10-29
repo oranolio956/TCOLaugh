@@ -5,15 +5,8 @@
 # Default to Render's PORT env var (usually 10000)
 PORT=${PORT:-10000}
 
-# Start the server with command-line flags
-# This ensures compatibility with Render's dynamic port assignment
-# Remove any profile.json files to force command-line usage
-rm -f /app/profile.json
+# Update profile.json with the correct port
+sed -i "s/\"port\": 10000/\"port\": $PORT/g" /app/profile.json
 
-exec /app/adaptixserver \
-    -i 0.0.0.0 \
-    -p "$PORT" \
-    -e /tcolaugh \
-    -pw TCOLaugh2025!Secure \
-    -sc /app/server.rsa.crt \
-    -sk /app/server.rsa.key
+# Start the server using the profile
+exec /app/adaptixserver -profile /app/profile.json
