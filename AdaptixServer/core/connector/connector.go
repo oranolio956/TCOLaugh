@@ -242,10 +242,24 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, tsResponse profi
 
 func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
-	err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
-	if err != nil {
-		logs.Error("", "Failed to start HTTP Server: "+err.Error())
-		return
+	
+	// Check if SSL certificates are provided
+	if tc.Cert != "" && tc.Key != "" {
+		// Use HTTPS mode
+		logs.Success("", "Starting HTTPS server on %s", host)
+		err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
+		if err != nil {
+			logs.Error("", "Failed to start HTTPS Server: "+err.Error())
+			return
+		}
+	} else {
+		// Use HTTP mode (for Render deployment)
+		logs.Success("", "Starting HTTP server on %s", host)
+		err := tc.Engine.Run(host)
+		if err != nil {
+			logs.Error("", "Failed to start HTTP Server: "+err.Error())
+			return
+		}
 	}
 	*finished <- true
 }

@@ -2,18 +2,15 @@
   "Teamserver": {
     "interface": "0.0.0.0",
     "port": 10000,
-    "endpoint": "/tcolaugh",
-    "password": "TCOLaugh2025!Secure",
-    "only_password": false,
+    "endpoint": "/endpoint",
+    "password": "pass",
+    "only_password": true,
     "operators": {
-      "admin": "Admin@TCO2025!",
-      "operator": "Operator@TCO2025!"
+      "operator1": "pass1",
+      "operator2": "pass2"
     },
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
-    "allow_http": true,
-    "cors_enabled": true,
-    "cors_origins": ["*"],
     "extenders": [
       "extenders/listener_beacon_http/config.json",
       "extenders/listener_beacon_smb/config.json",
@@ -26,16 +23,13 @@
     "refresh_token_live_hours": 168
   },
   "ServerResponse": {
-    "status": 200,
+    "status": 404,
     "headers": {
-      "Content-Type": "application/json; charset=UTF-8",
+      "Content-Type": "text/html; charset=UTF-8",
       "Server": "AdaptixC2",
-      "Adaptix Version": "v0.9",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization"
+      "Adaptix Version": "v0.9"
     },
-    "page": "{\"status\":\"online\",\"version\":\"v0.9\",\"endpoint\":\"/tcolaugh\",\"message\":\"TCOLaugh C2 Server Ready\"}"
+    "page": "404page.html"
   },
   "EventCallback": {
     "Telegram": {
