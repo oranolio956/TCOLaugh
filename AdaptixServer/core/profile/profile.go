@@ -29,28 +29,31 @@ func (p *AdaptixProfile) IsValid() error {
 		valid = false
 	}
 
-	if p.Server.Cert == "" {
-		logs.Error("", "'Teamserver.cert' must be set")
-		valid = false
-	} else {
-		_, err := os.Stat(p.Server.Cert)
-		if err != nil {
-			if os.IsNotExist(err) {
-				logs.Error("", "'Teamserver.cert': file does not exists")
-				valid = false
+	// Only validate SSL certificates if SSL is enabled
+	if p.Server.SSLEnabled {
+		if p.Server.Cert == "" {
+			logs.Error("", "'Teamserver.cert' must be set when SSL is enabled")
+			valid = false
+		} else {
+			_, err := os.Stat(p.Server.Cert)
+			if err != nil {
+				if os.IsNotExist(err) {
+					logs.Error("", "'Teamserver.cert': file does not exists")
+					valid = false
+				}
 			}
 		}
-	}
 
-	if p.Server.Key == "" {
-		logs.Error("", "'Teamserver.key' must be set")
-		valid = false
-	} else {
-		_, err := os.Stat(p.Server.Key)
-		if err != nil {
-			if os.IsNotExist(err) {
-				logs.Error("", "'Teamserver.key': file does not exists")
-				valid = false
+		if p.Server.Key == "" {
+			logs.Error("", "'Teamserver.key' must be set when SSL is enabled")
+			valid = false
+		} else {
+			_, err := os.Stat(p.Server.Key)
+			if err != nil {
+				if os.IsNotExist(err) {
+					logs.Error("", "'Teamserver.key': file does not exists")
+					valid = false
+				}
 			}
 		}
 	}

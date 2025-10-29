@@ -13,6 +13,7 @@ type TsProfile struct {
 	Password     string            `json:"password"`
 	OnlyPassword bool              `json:"only_password"`
 	Operators    map[string]string `json:"operators"`
+	SSLEnabled   bool              `json:"ssl_enabled"`
 	Cert         string            `json:"cert"`
 	Key          string            `json:"key"`
 	Extenders    []string          `json:"extenders"`
