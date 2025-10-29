@@ -13,12 +13,12 @@
     "cert": "server.rsa.crt",
     "key": "server.rsa.key",
     "extenders": [
-      "../dist/extenders/listener_beacon_http/config.json",
-      "../dist/extenders/listener_beacon_smb/config.json",
-      "../dist/extenders/listener_beacon_tcp/config.json",
-      "../dist/extenders/agent_beacon/config.json",
-      "../dist/extenders/listener_gopher_tcp/config.json",
-      "../dist/extenders/agent_gopher/config.json"
+      "extenders/listener_beacon_http/config.json",
+      "extenders/listener_beacon_smb/config.json",
+      "extenders/listener_beacon_tcp/config.json",
+      "extenders/agent_beacon/config.json",
+      "extenders/listener_gopher_tcp/config.json",
+      "extenders/agent_gopher/config.json"
     ],
     "access_token_live_hours": 12,
     "refresh_token_live_hours": 168
