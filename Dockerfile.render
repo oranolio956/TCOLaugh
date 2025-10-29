@@ -22,5 +22,5 @@ RUN chmod +x /app/adaptixserver
 # Expose port (Render uses PORT env var, defaults to 10000)
 EXPOSE 10000
 
-# Run the server with custom port from environment
-CMD ["/bin/sh", "-c", "/app/adaptixserver -i 0.0.0.0 -p ${PORT:-10000} -e /tcolaugh -pw TCOLaugh2025!Secure -sc server.rsa.crt -sk server.rsa.key"]
+# Run the server with custom port from environment and improved stability
+CMD ["/bin/sh", "-c", "/app/adaptixserver -i 0.0.0.0 -p ${PORT:-10000} -e /tcolaugh -pw TCOLaugh2025!Secure -sc server.rsa.crt -sk server.rsa.key -ah -ce"]

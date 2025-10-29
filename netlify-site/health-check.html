@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TCOLaugh C2 - Health Check</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        .status {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .online { background: #d4edda; color: #155724; }
+        .offline { background: #f8d7da; color: #721c24; }
+        .checking { background: #fff3cd; color: #856404; }
+        .info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .endpoint {
+            font-family: monospace;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 3px;
+            margin: 5px 0;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        .timestamp {
+            color: #6c757d;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛡️ TCOLaugh C2 Framework</h1>
+        <h2>Health Check Dashboard</h2>
+        
+        <div id="status" class="status checking">🔄 Checking Server Status...</div>
+        
+        <div class="info">
+            <h3>Server Information</h3>
+            <div class="endpoint" id="serverUrl">https://tcolaugh-c2.onrender.com/tcolaugh</div>
+            <div><strong>Status:</strong> <span id="serverStatus">Checking...</span></div>
+            <div><strong>Response Time:</strong> <span id="responseTime">-</span></div>
+            <div><strong>Last Check:</strong> <span id="lastCheck">-</span></div>
+        </div>
+        
+        <button onclick="checkServer()">🔄 Refresh Status</button>
+        <button onclick="testConnection()">🧪 Test Connection</button>
+        
+        <div class="timestamp">
+            <div>Last Updated: <span id="timestamp"></span></div>
+            <div>TCOLaugh C2 Framework v0.9</div>
+        </div>
+    </div>
+
+    <script>
+        let serverUrl = 'https://tcolaugh-c2.onrender.com/tcolaugh';
+        
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        }
+        
+        async function checkServer() {
+            const statusDiv = document.getElementById('status');
+            const serverStatus = document.getElementById('serverStatus');
+            const responseTime = document.getElementById('responseTime');
+            const lastCheck = document.getElementById('lastCheck');
+            
+            statusDiv.className = 'status checking';
+            statusDiv.textContent = '🔄 Checking Server Status...';
+            
+            const startTime = Date.now();
+            
+            try {
+                const response = await fetch(serverUrl, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const endTime = Date.now();
+                const responseTimeMs = endTime - startTime;
+                
+                if (response.ok) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = '✅ Server Online';
+                    serverStatus.textContent = 'Online';
+                    responseTime.textContent = responseTimeMs + 'ms';
+                    lastCheck.textContent = new Date().toLocaleString();
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '❌ Server Error: ' + response.status;
+                    serverStatus.textContent = 'Error: ' + response.status;
+                    responseTime.textContent = responseTimeMs + 'ms';
+                    lastCheck.textContent = new Date().toLocaleString();
+                }
+            } catch (error) {
+                const endTime = Date.now();
+                const responseTimeMs = endTime - startTime;
+                
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '❌ Connection Failed';
+                serverStatus.textContent = 'Offline: ' + error.message;
+                responseTime.textContent = responseTimeMs + 'ms';
+                lastCheck.textContent = new Date().toLocaleString();
+            }
+            
+            updateTimestamp();
+        }
+        
+        async function testConnection() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status checking';
+            statusDiv.textContent = '🧪 Testing Connection...';
+            
+            try {
+                const response = await fetch(serverUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        test: 'connection',
+                        timestamp: new Date().toISOString()
+                    })
+                });
+                
+                if (response.ok) {
+                    statusDiv.className = 'status online';
+                    statusDiv.textContent = '✅ Connection Test Passed';
+                } else {
+                    statusDiv.className = 'status offline';
+                    statusDiv.textContent = '❌ Connection Test Failed: ' + response.status;
+                }
+            } catch (error) {
+                statusDiv.className = 'status offline';
+                statusDiv.textContent = '❌ Connection Test Error: ' + error.message;
+            }
+            
+            updateTimestamp();
+        }
+        
+        // Auto-check every 30 seconds
+        setInterval(checkServer, 30000);
+        
+        // Initial check
+        checkServer();
+        updateTimestamp();
+    </script>
+</body>
+</html>
