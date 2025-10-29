@@ -1,7 +1,7 @@
 {
   "Teamserver": {
     "interface": "0.0.0.0",
-    "port": 4321,
+    "port": 10000,
     "endpoint": "/endpoint",
     "password": "pass",
     "only_password": true,
