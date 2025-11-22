@@ -12,6 +12,7 @@ from panopticon.analysis.visual.face_engine import FaceEngine
 from panopticon.persistence.sqlite_manager import db_instance
 from panopticon.analysis.intelligence import GeoIP, BreachAnalyzer
 from panopticon.api.security import SecurityMiddleware
+from panopticon.analysis.narrative.graph_rag import GraphNarrator
 
 app = FastAPI(title="Panopticon API", description="Identity Resolution Platform Interface")
 logger = logging.getLogger("uvicorn")
@@ -22,6 +23,7 @@ app.add_middleware(SecurityMiddleware)
 # Initialize services
 scanner = ActiveScanner()
 face_engine = FaceEngine()
+narrator = GraphNarrator()
 
 # Setup Templates
 os.makedirs("panopticon/api/templates", exist_ok=True)
@@ -95,11 +97,18 @@ def search_person(query: PersonSearchRequest):
                  analysis = BreachAnalyzer.assess_password_strength(p_hash)
                  password_analysis[p_hash] = analysis
 
+    # 4. Narrative Generation (GraphRAG)
+    narrative = "No graph context available for analysis."
+    if graph_context and graph_context.get('nodes'):
+        target = query.email or query.username or query.name
+        narrative = narrator.generate_briefing(target, graph_context, password_analysis)
+
     return {
         "matches": results, 
         "graph": graph_context,
         "geo_trace": locations,
-        "risk_analysis": password_analysis
+        "risk_analysis": password_analysis,
+        "narrative": narrative
     }
 
 @app.post("/search/face")

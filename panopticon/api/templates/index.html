@@ -12,9 +12,15 @@
 <body class="bg-slate-900 text-slate-100 font-mono">
 
     <div class="container mx-auto p-4">
-        <header class="mb-8 border-b border-slate-700 pb-4">
-            <h1 class="text-3xl font-bold text-emerald-500">PANOPTICON <span class="text-sm text-slate-500">v0.2.0</span></h1>
-            <p class="text-slate-400">Web-Scale Identity Resolution Platform</p>
+        <header class="mb-8 border-b border-slate-700 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-emerald-500">PANOPTICON <span class="text-sm text-slate-500">v1.0.0</span></h1>
+                <p class="text-slate-400">Web-Scale Identity Resolution & AI Intelligence</p>
+            </div>
+            <div class="text-right text-xs text-slate-600">
+                System: ONLINE<br>
+                Security: ENFORCED
+            </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -26,6 +32,7 @@
                     <div class="flex justify-between"><span>Documents:</span> <span id="stat-docs" class="font-bold">0</span></div>
                     <div class="flex justify-between"><span>Graph Nodes:</span> <span id="stat-nodes" class="font-bold">0</span></div>
                     <div class="flex justify-between"><span>Graph Edges:</span> <span id="stat-edges" class="font-bold">0</span></div>
+                    <div class="flex justify-between text-yellow-500"><span>Audit Logs:</span> <span id="stat-audits" class="font-bold">0</span></div>
                 </div>
                 <button onclick="refreshStats()" class="mt-4 bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-sm w-full">Refresh Stats</button>
             </div>
@@ -42,12 +49,27 @@
                     <button onclick="performSearch()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Search</button>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    <div id="search-results" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre">
-                        // Document Matches
+                    <div>
+                         <h3 class="text-sm text-slate-400 mb-1">Data Matches</h3>
+                         <div id="search-results" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre"></div>
                     </div>
-                    <div id="risk-analysis" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre text-red-300">
-                        // Risk Analysis
+                    <div>
+                        <h3 class="text-sm text-slate-400 mb-1">Risk Analysis</h3>
+                        <div id="risk-analysis" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre text-red-300"></div>
                     </div>
+                </div>
+            </div>
+
+            <!-- AI Narrative Panel (Full Width) -->
+            <div class="bg-slate-800 p-4 rounded shadow col-span-1 md:col-span-3">
+                <h2 class="text-xl font-semibold mb-2 text-purple-400 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    AI Intelligence Briefing
+                </h2>
+                <div id="ai-narrative" class="bg-slate-900 p-4 rounded text-sm text-slate-300 font-sans leading-relaxed border-l-4 border-purple-500 min-h-[100px]">
+                    Select a target to generate an intelligence briefing...
                 </div>
             </div>
 
@@ -81,6 +103,7 @@
             document.getElementById('stat-docs').innerText = data.documents;
             document.getElementById('stat-nodes').innerText = data.nodes;
             document.getElementById('stat-edges').innerText = data.edges;
+            document.getElementById('stat-audits').innerText = data.audit_logs;
         }
 
         async function performSearch() {
@@ -91,6 +114,7 @@
             payload[type] = val;
 
             document.getElementById('search-results').innerText = "Searching...";
+            document.getElementById('ai-narrative').innerText = "Generating Intelligence Briefing (Querying Claude)...";
             
             // Clear map
             markers.forEach(m => map.removeLayer(m));
@@ -98,13 +122,17 @@
 
             const res = await fetch('/search/person', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': 'panopticon-secret' // Mock key for demo
+                },
                 body: JSON.stringify(payload)
             });
 
             const data = await res.json();
             document.getElementById('search-results').innerText = JSON.stringify(data.matches, null, 2);
             document.getElementById('risk-analysis').innerText = JSON.stringify(data.risk_analysis, null, 2);
+            document.getElementById('ai-narrative').innerText = data.narrative;
             
             renderGraph(data.graph);
             renderMap(data.geo_trace);
@@ -129,6 +157,7 @@
                 let color = '#10b981'; // Default emerald
                 if(info.type === 'IPAddress') color = '#f59e0b'; // Amber
                 if(info.type === 'PasswordHash') color = '#ef4444'; // Red
+                if(info.type === 'Email') color = '#3b82f6'; // Blue
                 
                 nodes.push({id: uid, label: uid + "\n" + info.type, color: color});
             }
