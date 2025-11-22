@@ -1,12 +1,21 @@
 import time
 import random
 import logging
-from typing import Dict, Any
-from panopticon.ingestion.kafka_interface import IngestionProducer
+from typing import Dict, Any, List
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Mock Kafka components since we don't have a running broker
+class IngestionProducer:
+    def __init__(self, bootstrap_servers: List[str], topic: str):
+        self.topic = topic
+        logger.info(f"Initialized Producer for topic {topic}")
+
+    def send_record(self, record: Dict[str, Any]):
+        logger.info(f"Sending to {self.topic}: {json.dumps(record, indent=2)}")
 
 class MockCrawler:
     def __init__(self, producer: IngestionProducer):
@@ -52,7 +61,7 @@ class MockCrawler:
             "timestamp": time.time()
         }
 
-    def run(self, iterations: int = 10):
+    def run(self, iterations: int = 5):
         logger.info(f"Starting mock crawl for {iterations} iterations...")
         for _ in range(iterations):
             # Simulate Surface Web ingestion
@@ -66,12 +75,7 @@ class MockCrawler:
             time.sleep(0.5) # Simulate network delay
 
 if __name__ == "__main__":
-    # In a real scenario, bootstrap_servers would be from config
+    # Use the internal mock producer
     producer = IngestionProducer(bootstrap_servers=["localhost:9092"], topic="raw_ingestion")
     crawler = MockCrawler(producer)
-    # This will likely fail connection in this environment without running Kafka, 
-    # but illustrates the logic.
-    try:
-        crawler.run(5)
-    except Exception as e:
-        logger.error(f"Mock run failed (expected if Kafka not running): {e}")
+    crawler.run(5)
