@@ -1,0 +1,212 @@
+INFO:__main__:Initialized Producer for topic raw_ingestion
+INFO:__main__:Starting mock crawl (Infinite: True)...
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://twitter.com/johndoe30",
+  "raw_data": {
+    "name": "John Doe",
+    "username": "johndoe30",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837392.3843079
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "bob.w@provider.com",
+    "password_hash": "sha1:8864745499395637033",
+    "ip_address": "192.168.1.21"
+  },
+  "timestamp": 1763837392.384363
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://tiktok.com/evabrown36",
+  "raw_data": {
+    "name": "Eva Brown",
+    "username": "evabrown36",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837395.3845143
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "bob.w@provider.com",
+    "password_hash": "sha1:748551823836135585",
+    "ip_address": "192.168.1.74"
+  },
+  "timestamp": 1763837395.3847024
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://twitter.com/janesmith21",
+  "raw_data": {
+    "name": "Jane Smith",
+    "username": "janesmith21",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837398.3849702
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "jane.s@test.org",
+    "password_hash": "sha1:8864745499395637033",
+    "ip_address": "192.168.1.198"
+  },
+  "timestamp": 1763837398.3852115
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://instagram.com/janesmith16",
+  "raw_data": {
+    "name": "Jane Smith",
+    "username": "janesmith16",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837401.3853974
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "jane.s@test.org",
+    "password_hash": "sha1:748551823836135585",
+    "ip_address": "192.168.1.40"
+  },
+  "timestamp": 1763837401.3854947
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://instagram.com/evabrown57",
+  "raw_data": {
+    "name": "Eva Brown",
+    "username": "evabrown57",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837404.3856494
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "alice.j@company.net",
+    "password_hash": "sha1:-2584735401838496499",
+    "ip_address": "192.168.1.52"
+  },
+  "timestamp": 1763837404.385767
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://linkedin.com/janesmith84",
+  "raw_data": {
+    "name": "Jane Smith",
+    "username": "janesmith84",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837407.3859234
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "jdoe@example.com",
+    "password_hash": "sha1:8864745499395637033",
+    "ip_address": "192.168.1.238"
+  },
+  "timestamp": 1763837407.3860207
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://twitter.com/johndoe30",
+  "raw_data": {
+    "name": "John Doe",
+    "username": "johndoe30",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837410.3862798
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "bob.w@provider.com",
+    "password_hash": "sha1:8171311151582472029",
+    "ip_address": "192.168.1.35"
+  },
+  "timestamp": 1763837410.386476
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://twitter.com/johndoe85",
+  "raw_data": {
+    "name": "John Doe",
+    "username": "johndoe85",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837413.386664
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "bob.w@provider.com",
+    "password_hash": "sha1:-2584735401838496499",
+    "ip_address": "192.168.1.245"
+  },
+  "timestamp": 1763837413.3868923
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://instagram.com/bobwilliams4",
+  "raw_data": {
+    "name": "Bob Williams",
+    "username": "bobwilliams4",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837416.3870525
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "bob.w@provider.com",
+    "password_hash": "sha1:748551823836135585",
+    "ip_address": "192.168.1.156"
+  },
+  "timestamp": 1763837416.3872747
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "surface_web",
+  "url": "https://instagram.com/alicejohnson54",
+  "raw_data": {
+    "name": "Alice Johnson",
+    "username": "alicejohnson54",
+    "bio": "Just a random bio for testing.",
+    "location": "San Francisco, CA"
+  },
+  "timestamp": 1763837419.387473
+}
+INFO:__main__:Sending to raw_ingestion: {
+  "source_type": "deep_web",
+  "dataset": "Collection #1",
+  "raw_data": {
+    "email": "alice.j@company.net",
+    "password_hash": "sha1:-2584735401838496499",
+    "ip_address": "192.168.1.50"
+  },
+  "timestamp": 1763837419.3877468
+}

@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+import argparse
 from typing import Dict, Any, List
 import json
 
@@ -23,8 +24,8 @@ class MockCrawler:
 
     def generate_surface_data(self) -> Dict[str, Any]:
         """Simulates scraping a social media profile."""
-        names = ["John Doe", "Jane Smith", "Alice Johnson", "Bob Williams"]
-        domains = ["twitter.com", "linkedin.com", "instagram.com"]
+        names = ["John Doe", "Jane Smith", "Alice Johnson", "Bob Williams", "Eva Brown", "Michael Chen"]
+        domains = ["twitter.com", "linkedin.com", "instagram.com", "tiktok.com"]
         
         name = random.choice(names)
         domain = random.choice(domains)
@@ -44,8 +45,8 @@ class MockCrawler:
 
     def generate_breach_data(self) -> Dict[str, Any]:
         """Simulates ingesting a breach record."""
-        emails = ["jdoe@example.com", "jane.s@test.org", "alice.j@company.net"]
-        passwords = ["password123", "qwerty", "secret"]
+        emails = ["jdoe@example.com", "jane.s@test.org", "alice.j@company.net", "bob.w@provider.com"]
+        passwords = ["password123", "qwerty", "secret", "123456", "letmein"]
         
         email = random.choice(emails)
         password = random.choice(passwords)
@@ -61,9 +62,10 @@ class MockCrawler:
             "timestamp": time.time()
         }
 
-    def run(self, iterations: int = 5):
-        logger.info(f"Starting mock crawl for {iterations} iterations...")
-        for _ in range(iterations):
+    def run(self, iterations: int = 5, delay: float = 0.5):
+        logger.info(f"Starting mock crawl (Infinite: {iterations == -1})...")
+        count = 0
+        while iterations == -1 or count < iterations:
             # Simulate Surface Web ingestion
             surface_record = self.generate_surface_data()
             self.producer.send_record(surface_record)
@@ -72,10 +74,18 @@ class MockCrawler:
             breach_record = self.generate_breach_data()
             self.producer.send_record(breach_record)
             
-            time.sleep(0.5) # Simulate network delay
+            time.sleep(delay) # Simulate network delay
+            count += 1
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--continuous", action="store_true", help="Run indefinitely")
+    parser.add_argument("--delay", type=float, default=2.0, help="Delay between records in seconds")
+    args = parser.parse_args()
+
     # Use the internal mock producer
     producer = IngestionProducer(bootstrap_servers=["localhost:9092"], topic="raw_ingestion")
     crawler = MockCrawler(producer)
-    crawler.run(5)
+    
+    iterations = -1 if args.continuous else 5
+    crawler.run(iterations=iterations, delay=args.delay)
