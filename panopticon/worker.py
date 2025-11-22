@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Any, Dict
 
 from celery import Celery
@@ -22,6 +23,40 @@ app.conf.update(
 
 logger = logging.getLogger(__name__)
 
+_neo4j_lock = threading.Lock()
+_neo4j_singleton = None
+_visual_lock = threading.Lock()
+_visual_bundle = {}
+
+
+def _get_neo4j():
+    global _neo4j_singleton
+    with _neo4j_lock:
+        if _neo4j_singleton is None:
+            from panopticon.persistence.graph.neo4j_manager import Neo4jManager
+
+            _neo4j_singleton = Neo4jManager()
+    return _neo4j_singleton
+
+
+def _get_visual_resources():
+    global _visual_bundle
+    with _visual_lock:
+        if not _visual_bundle:
+            import numpy as np
+
+            from panopticon.analysis.intel_extractor import IntelExtractor
+            from panopticon.analysis.visual.face_engine import FaceEngine
+            from panopticon.persistence.vector.milvus_manager import MilvusManager
+
+            _visual_bundle = {
+                "np": np,
+                "extractor": IntelExtractor(),
+                "face_engine": FaceEngine(),
+                "milvus": MilvusManager(),
+            }
+    return _visual_bundle
+
 
 @app.task
 def process_ingestion_task(record: Dict[str, Any]):
@@ -32,13 +67,10 @@ def process_ingestion_task(record: Dict[str, Any]):
     3. Graph Persistence (Neo4j)
     """
     logger.info(f"Processing task for source: {record.get('source_type')}")
-
-    # Lazy import to avoid circular dependencies at startup
-    from panopticon.persistence.graph.neo4j_manager import Neo4jManager
-
-    # Initialize DB connection inside the worker process
-    # In prod, use a connection pool or singleton properly scoped
-    neo4j = Neo4jManager()
+    neo4j = _get_neo4j()
+    if not neo4j or not getattr(neo4j, "driver", None):
+        logger.error("Neo4j unavailable. Skipping ingestion task.")
+        return
 
     try:
         source_type = record.get("source_type")
@@ -60,8 +92,6 @@ def process_ingestion_task(record: Dict[str, Any]):
 
     except Exception as e:
         logger.error(f"Task failed: {e}")
-    finally:
-        neo4j.close()
 
 
 @app.task
@@ -69,24 +99,18 @@ def process_visual_task(image_path: str):
     """
     Background task for heavy visual processing (Face Rec + OCR).
     """
-    import numpy as np
-
-    from panopticon.analysis.intel_extractor import IntelExtractor
-    from panopticon.analysis.visual.face_engine import FaceEngine
-    from panopticon.persistence.vector.milvus_manager import MilvusManager
+    resources = _get_visual_resources()
+    np = resources["np"]
+    extractor = resources["extractor"]
+    face_engine = resources["face_engine"]
+    milvus = resources["milvus"]
 
     logger.info(f"Processing visual task: {image_path}")
 
-    extractor = IntelExtractor()
-    face_engine = FaceEngine()
-    milvus = MilvusManager()
-
     try:
-        # 1. OCR
         text = extractor.extract_text_from_image(image_path)
         logger.info(f"Extracted Text: {text[:50]}...")
 
-        # 2. Face Recognition
         results = face_engine.process_image(image_path)
         for res in results:
             vector = np.array(res["embedding"], dtype=np.float32)

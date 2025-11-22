@@ -7,6 +7,9 @@ cd "$ROOT_DIR"
 API_PORT="${PANOPTICON_PORT:-8000}"
 START_CRAWLER="${START_CRAWLER:-false}"
 START_CELERY="${START_CELERY:-true}"
+DATA_DIR="${PANOPTICON_DATA_DIR:-$ROOT_DIR/data}"
+mkdir -p "$DATA_DIR"
+export PANOPTICON_DB_PATH="${PANOPTICON_DB_PATH:-$DATA_DIR/panopticon.db}"
 
 if lsof -i :"$API_PORT" &>/dev/null; then
   echo "Port ${API_PORT} already in use. Set PANOPTICON_PORT or stop the existing process."

@@ -1,11 +1,15 @@
 import hashlib
 from typing import Any, Dict, List, Optional, Tuple
 
-import cv2
 import numpy as np
 
 try:
-    import mediapipe as mp
+    import cv2  # type: ignore
+except ImportError:
+    cv2 = None
+
+try:
+    import mediapipe as mp  # type: ignore
 
     MEDIAPIPE_AVAILABLE = True
 except ImportError:
@@ -15,7 +19,7 @@ except ImportError:
 
 class FaceEngine:
     def __init__(self):
-        if MEDIAPIPE_AVAILABLE:
+        if MEDIAPIPE_AVAILABLE and cv2 is not None:
             self.mp_face_detection = mp.solutions.face_detection
             self.detector = self.mp_face_detection.FaceDetection(
                 model_selection=1,  # 0 for close faces, 1 for far faces
@@ -26,7 +30,7 @@ class FaceEngine:
         print("FaceEngine initialized.")
 
     def detect_faces(self, image: np.ndarray) -> List[Any]:
-        if not MEDIAPIPE_AVAILABLE:
+        if not MEDIAPIPE_AVAILABLE or cv2 is None:
 
             class MockDetection:
                 def __init__(self):
@@ -44,11 +48,13 @@ class FaceEngine:
         Generates a deterministic 512-dim embedding based on image content hash.
         This ensures that searching for the same image returns the same vector.
         """
-        # 1. Resize to small fix size to normalize small changes
-        resized = cv2.resize(face_crop, (64, 64))
+        if cv2 is not None:
+            resized = cv2.resize(face_crop, (64, 64))
+            buffer = resized.tobytes()
+        else:
+            buffer = face_crop.tobytes()
 
-        # 2. Compute Hash (MD5)
-        img_hash = hashlib.md5(resized.tobytes()).hexdigest()
+        img_hash = hashlib.md5(buffer).hexdigest()
 
         # 3. Seed random generator with this hash
         seed = int(img_hash, 16) % (2**32)
@@ -62,9 +68,10 @@ class FaceEngine:
         return embedding / norm
 
     def process_image(self, image_path: str) -> List[Dict[str, Any]]:
-        image = cv2.imread(image_path)
+        image = None
+        if cv2 is not None:
+            image = cv2.imread(image_path)
         if image is None:
-            # Create synthetic image for mock if file missing
             image = np.zeros((100, 100, 3), dtype=np.uint8)
 
         detections = self.detect_faces(image)

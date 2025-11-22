@@ -60,9 +60,19 @@ python3 panopticon/scenario_test.py
 | `PANOPTICON_API_KEY` | `dev-panopticon` (dev only) | Required header (`X-API-Key`) for every non-static route |
 | `PANOPTICON_ENABLE_AI_BRIEFING` | `false` | Opt-in switch before any graph data is sent to Anthropic |
 | `PANOPTICON_MAX_UPLOAD_BYTES` | `5MB` | Upload limit for `/search/face` |
+| `PANOPTICON_DB_PATH` | `./panopticon.db` | Location of the SQLite polyglot store (point to Render disk) |
+| `PANOPTICON_DOCUMENT_TTL_SECONDS` | `0` (disabled) | Automatically purge non-audit documents older than the TTL |
+| `PANOPTICON_INDEX_FIELDS` | `email,username,phone,ip_address` | CSV of document keys that should be indexed for fast lookup |
+| `PANOPTICON_USE_KAFKA` | `false` | When `true`, ingestion pushes to Kafka instead of SQLite fallback |
+| `PANOPTICON_RECON_TIMEOUT` | `6` | Timeout (seconds) for concurrent username reconnaissance calls |
+| `PANOPTICON_AI_GRAPH_LIMIT` | `40` | Max number of nodes/edges summarized before sending to the LLM |
 
 ## Security Hardening Highlights
 * API key enforcement on `/stats`, `/search/*`, `/recon/*`
 * Frontend no longer leaks credentials; users provide keys explicitly
 * Audit logs capture metadata only (no payload dumps)
 * Face-upload endpoint sanitizes filenames, enforces size limits, and scrubs temp files
+* Document store now indexes sensitive identifiers, purges stale data, and keeps WAL mode enabled for crash safety
+* Vector similarity search is cached in-memory for low latency and can fall back to Milvus if available
+* Username reconnaissance runs concurrently over HTTP/2 via `httpx` instead of blocking the FastAPI event loop
+* Kafka ingestion is feature-flagged—enable it in production to stream raw records while retaining SQLite fallback

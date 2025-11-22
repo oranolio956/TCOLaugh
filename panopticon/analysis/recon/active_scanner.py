@@ -1,13 +1,15 @@
+import asyncio
 import logging
-from typing import Any, Dict, List
+import os
+from typing import Any, Dict, List, Optional
 
-import requests
+import httpx
 
 logger = logging.getLogger(__name__)
 
 
 class ActiveScanner:
-    def __init__(self):
+    def __init__(self, timeout: Optional[float] = None):
         # List of sites to check for usernames (simplified Sherlock list)
         self.sites = {
             "Twitter": "https://twitter.com/{}",
@@ -15,29 +17,36 @@ class ActiveScanner:
             "Instagram": "https://instagram.com/{}",
             "Reddit": "https://www.reddit.com/user/{}",
         }
+        self.timeout = timeout or float(os.environ.get("PANOPTICON_RECON_TIMEOUT", "6"))
 
-    def check_username(self, username: str) -> List[Dict[str, str]]:
+    async def check_username(self, username: str) -> List[Dict[str, str]]:
         """
-        Checks if a username exists across multiple platforms.
+        Checks if a username exists across multiple platforms using concurrent HTTP calls.
         """
-        results = []
-        logger.info(f"Starting username scan for '{username}'...")
+        logger.info("Starting username scan for '%s'...", username)
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            tasks = [
+                self._fetch_site(client, site, template.format(username), site)
+                for site, template in self.sites.items()
+            ]
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for site, url_template in self.sites.items():
-            url = url_template.format(username)
-            try:
-                # In production, we need headers, proxies, and specific status code logic per site.
-                # This is a simplified check.
-                response = requests.get(url, timeout=5)
-                if response.status_code == 200:
-                    results.append({"site": site, "url": url, "status": "found"})
-                else:
-                    # 404 usually means not found, but 403/429 needs handling
-                    pass
-            except Exception as e:
-                logger.warning(f"Error checking {site}: {e}")
-
+        results: List[Dict[str, str]] = []
+        for resp in responses:
+            if isinstance(resp, dict):
+                results.append(resp)
         return results
+
+    async def _fetch_site(
+        self, client: httpx.AsyncClient, site: str, url: str, label: str
+    ) -> Optional[Dict[str, str]]:
+        try:
+            response = await client.get(url, headers={"User-Agent": "panopticon-recon"})
+            if response.status_code == 200:
+                return {"site": site, "url": str(response.url), "status": "found"}
+        except Exception as exc:
+            logger.warning("Error checking %s: %s", site, exc)
+        return None
 
     def hlr_lookup(self, phone_number: str) -> Dict[str, Any]:
         """

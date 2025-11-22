@@ -2,8 +2,20 @@ import logging
 from typing import Any, Dict, List
 
 import numpy as np
-from pymilvus import (Collection, CollectionSchema, DataType, FieldSchema,
-                      connections, utility)
+
+try:
+    from pymilvus import (  # type: ignore
+        Collection,
+        CollectionSchema,
+        DataType,
+        FieldSchema,
+        connections,
+        utility,
+    )
+
+    MILVUS_AVAILABLE = True
+except ImportError:
+    MILVUS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +23,10 @@ logger = logging.getLogger(__name__)
 class MilvusManager:
     def __init__(self, host: str = "localhost", port: str = "19530"):
         self.collection_name = "faces_v1"
+        if not MILVUS_AVAILABLE:
+            logger.warning("pymilvus not installed. Milvus features disabled.")
+            self.collection = None
+            return
         try:
             connections.connect("default", host=host, port=port)
             logger.info(f"Connected to Milvus at {host}:{port}")

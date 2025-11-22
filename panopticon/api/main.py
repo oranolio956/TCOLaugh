@@ -18,12 +18,14 @@ from panopticon.analysis.recon.active_scanner import ActiveScanner
 from panopticon.analysis.visual.face_engine import FaceEngine
 from panopticon.api.security import SecurityMiddleware
 from panopticon.persistence.sqlite_manager import db_instance
+from panopticon.persistence.vector.milvus_manager import MilvusManager
 
 app = FastAPI(
     title="Panopticon API", description="Identity Resolution Platform Interface"
 )
 logger = logging.getLogger("uvicorn")
 MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
+milvus_index = MilvusManager()
 
 # Add Security Middleware
 app.add_middleware(SecurityMiddleware)
@@ -181,7 +183,7 @@ async def search_face(file: UploadFile = File(...)):
             matches = []
             for det in detections:
                 emb = np.array(det["embedding"], dtype=np.float32)
-                vec_matches = db_instance.search_vectors(emb)
+                vec_matches = _search_vectors(emb)
                 matches.append(
                     {
                         "face_score": det["detection_score"],
@@ -207,10 +209,18 @@ async def search_face(file: UploadFile = File(...)):
 async def active_recon(request: ReconRequest):
     # Optimized: Made async to prevent blocking the event loop during external HTTP calls
     # Note: ActiveScanner internals also need to be async for full benefit
-    hits = scanner.check_username(request.username)
+    hits = await scanner.check_username(request.username)
     # Persist results
     doc_id = f"recon_{request.username}"
     db_instance.add_document(
         doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
     )
     return {"username": request.username, "found_on": hits}
+
+
+def _search_vectors(embedding: np.ndarray) -> List[Dict[str, Any]]:
+    if milvus_index.collection:
+        matches = milvus_index.search_vectors(embedding)
+        if matches:
+            return matches
+    return db_instance.search_vectors(embedding)

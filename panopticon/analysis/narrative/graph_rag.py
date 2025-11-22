@@ -1,10 +1,12 @@
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Iterable, Tuple
 
 from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
+
+MAX_GRAPH_ITEMS = int(os.environ.get("PANOPTICON_AI_GRAPH_LIMIT", "40") or 40)
 
 
 def _ai_enabled() -> bool:
@@ -36,28 +38,28 @@ class GraphNarrator:
     ) -> str:
         """
         Uses Claude to synthesize a graph into an intelligence briefing when enabled.
+        Sensitive identifiers are redacted before leaving the platform.
         """
         if not (self.enabled and self.client):
             return "AI Intelligence Briefing disabled. Set PANOPTICON_ENABLE_AI_BRIEFING=true to opt in."
 
-        # Serialize graph for context
         nodes_desc = []
-        for uid, info in graph_data.get("nodes", {}).items():
+        for uid, info in self._limited_items(graph_data.get("nodes", {}).items()):
             props = ", ".join(
-                [f"{k}={v}" for k, v in info.get("properties", {}).items()]
+                [f"{k}={self._redact_value(v)}" for k, v in info.get("properties", {}).items()]
             )
-            nodes_desc.append(f"- Node {uid} ({info.get('type')}): {props}")
+            nodes_desc.append(f"- Node {self._redact_value(uid)} ({info.get('type')}): {props}")
 
         edges_desc = []
-        for edge in graph_data.get("edges", []):
+        for edge in self._limited_items(graph_data.get("edges", [])):
             edges_desc.append(
-                f"- {edge['source']} --[{edge['type']}]--> {edge['target']}"
+                f"- {self._redact_value(edge['source'])} --[{edge['type']}]--> {self._redact_value(edge['target'])}"
             )
 
         risk_desc = []
-        for k, v in risks.items():
+        for uid, summary in self._limited_items(risks.items()):
             risk_desc.append(
-                f"- Risk for {k}: {v.get('grade')} (Score: {v.get('risk_score')}) - {v.get('notes')}"
+                f"- Risk cluster {self._redact_value(uid)}: grade {summary.get('grade')} (score {summary.get('risk_score')})"
             )
 
         context = "\n".join(nodes_desc + edges_desc + risk_desc)
@@ -91,3 +93,24 @@ class GraphNarrator:
         except Exception as e:
             logger.error(f"GraphRAG generation failed: {e}")
             return "Error generating intelligence briefing."
+
+    def _limited_items(self, iterable: Iterable) -> Iterable:
+        count = 0
+        for item in iterable:
+            if count >= MAX_GRAPH_ITEMS:
+                break
+            yield item
+            count += 1
+
+    def _redact_value(self, value: Any) -> str:
+        if not isinstance(value, str):
+            return str(value)
+        val = value.strip()
+        if "@" in val:
+            name, domain = val.split("@", 1)
+            return f"{name[:2]}***@{domain}"
+        if val.count(".") == 3 and all(part.isdigit() for part in val.split(".")):
+            return f"{val.split('.')[0]}.***.***.{val.split('.')[-1]}"
+        if len(val) > 8:
+            return f"{val[:4]}…{val[-2:]}"
+        return val

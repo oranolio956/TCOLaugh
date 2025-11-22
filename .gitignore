@@ -30,6 +30,7 @@ simulation.log
 # Data & uploads
 uploads/
 /tmp/
+data/
 
 # System
 .DS_Store

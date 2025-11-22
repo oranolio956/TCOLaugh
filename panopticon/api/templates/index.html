@@ -28,7 +28,7 @@
             <!-- Connection Panel -->
             <div class="bg-slate-800 p-4 rounded shadow md:col-span-3">
                 <h2 class="text-xl font-semibold mb-4 text-emerald-400">Connection Settings</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label for="config-base-url" class="block text-xs uppercase text-slate-400 mb-1">API Base URL</label>
                         <input type="text" id="config-base-url" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="https://api.example.com">
@@ -39,6 +39,9 @@
                     </div>
                     <div class="flex items-end">
                         <button onclick="saveConnection()" class="w-full bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded text-sm">Save & Refresh</button>
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="clearConnection()" class="w-full bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm">Clear Credentials</button>
                     </div>
                 </div>
                 <p id="config-status" class="mt-3 text-xs text-slate-400">Enter your API base URL and key to begin.</p>
@@ -110,6 +113,7 @@
     <script>
         const DEFAULT_BASE_URL = window.location.origin;
         const CONFIG_STORAGE_KEY = "panopticonClientConfig";
+        const KEY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
         let clientConfig = null;
         let statsIntervalId = null;
 
@@ -133,7 +137,17 @@
             }
             try {
                 const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
-                clientConfig = stored ? JSON.parse(stored) : { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    if (!parsed.savedAt || Date.now() - parsed.savedAt > KEY_TTL_MS) {
+                        localStorage.removeItem(CONFIG_STORAGE_KEY);
+                        clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+                    } else {
+                        clientConfig = parsed;
+                    }
+                } else {
+                    clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+                }
             } catch (err) {
                 clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
             }
@@ -150,11 +164,19 @@
         function saveConnection() {
             const baseUrl = document.getElementById('config-base-url').value.trim() || DEFAULT_BASE_URL;
             const apiKey = document.getElementById('config-api-key').value.trim();
-            clientConfig = { baseUrl, apiKey };
+            clientConfig = { baseUrl, apiKey, savedAt: Date.now() };
             localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(clientConfig));
             hydrateConfigForm();
             refreshStats();
             scheduleStats();
+        }
+
+        function clearConnection() {
+            localStorage.removeItem(CONFIG_STORAGE_KEY);
+            clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+            hydrateConfigForm();
+            updateConfigStatus("Credentials cleared. Enter an API key to continue.", false);
+            refreshStats();
         }
 
         function updateConfigStatus(message, isError = false) {

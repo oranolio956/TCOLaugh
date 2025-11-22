@@ -17,6 +17,8 @@ services:
         value: "false"
       - key: PANOPTICON_MAX_UPLOAD_BYTES
         value: "5242880"
+      - key: PANOPTICON_DB_PATH
+        value: /var/panopticon/data/panopticon.db
       - key: ANTHROPIC_API_KEY
         sync: false # Prompt user on deploy
       - key: REDIS_URL
@@ -24,6 +26,10 @@ services:
           type: redis
           name: panopticon-redis
           property: connectionString
+    disk:
+      name: panopticon-data
+      mountPath: /var/panopticon
+      sizeGB: 1
 
   # --- Worker Service (Celery) ---
   - type: worker

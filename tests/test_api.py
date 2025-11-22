@@ -38,3 +38,8 @@ def test_search_endpoint_authorized():
         "/search/person", json={"email": "test@example.com"}, headers=AUTH_HEADERS
     )
     assert response.status_code == 200
+
+
+def test_search_requires_input():
+    response = client.post("/search/person", json={}, headers=AUTH_HEADERS)
+    assert response.status_code == 422

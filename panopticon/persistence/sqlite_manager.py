@@ -1,32 +1,54 @@
 import json
 import logging
+import os
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_DB_PATH = os.environ.get("PANOPTICON_DB_PATH", "panopticon.db")
+DOCUMENT_TTL_SECONDS = int(os.environ.get("PANOPTICON_DOCUMENT_TTL_SECONDS", "0") or 0)
+INDEXED_FIELDS = {
+    field.strip().lower()
+    for field in os.environ.get(
+        "PANOPTICON_INDEX_FIELDS", "email,username,phone,ip_address"
+    ).split(",")
+    if field.strip()
+}
+MAX_INDEXED_VALUES = int(os.environ.get("PANOPTICON_MAX_INDEXED_VALUES", "64") or 64)
+PURGE_INTERVAL_SECONDS = int(os.environ.get("PANOPTICON_PURGE_INTERVAL", "60") or 60)
+
 
 class PolyglotStore:
     """
-    A wrapper around SQLite to simulate the multi-modal persistence layer:
-    1. Graph (Nodes/Edges) -> Simulates Neo4j
-    2. Documents (Raw Data) -> Simulates ScyllaDB/Elasticsearch
-    3. Vectors (Embeddings) -> Simulates DiskANN/Vearch
+    SQLite-backed polyglot simulator with lightweight indexing and vector caching.
     """
 
-    def __init__(self, db_path: str = "panopticon.db"):
-        self.db_path = db_path
-        # Use a lock to prevent concurrent write errors during simulation
+    def __init__(self, db_path: Optional[str] = None):
+        self.db_path = db_path or DEFAULT_DB_PATH
         self._lock = threading.Lock()
+        self.ttl_seconds = DOCUMENT_TTL_SECONDS
+        self._last_purge = 0.0
+        self._vector_cache_loaded = False
+        self._vector_matrix: Optional[np.ndarray] = None
+        self._vector_ids: List[str] = []
+        self._vector_metadata: List[Dict[str, Any]] = []
         self.setup_schema()
 
     @contextmanager
     def get_connection(self):
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn = sqlite3.connect(
+            self.db_path, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        conn.execute("PRAGMA foreign_keys=ON;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
         try:
             yield conn
         finally:
@@ -36,7 +58,6 @@ class PolyglotStore:
         with self.get_connection() as conn:
             cur = conn.cursor()
 
-            # 1. Document Store (The "Raw" Data)
             cur.execute(
                 """
             CREATE TABLE IF NOT EXISTS documents (
@@ -47,8 +68,25 @@ class PolyglotStore:
             )
             """
             )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_documents_source ON documents (source_type)"
+            )
 
-            # 2. Graph Store (Nodes)
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS document_index (
+                doc_id TEXT,
+                key TEXT,
+                value TEXT,
+                PRIMARY KEY (doc_id, key, value),
+                FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE
+            )
+            """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_document_lookup ON document_index (key, value)"
+            )
+
             cur.execute(
                 """
             CREATE TABLE IF NOT EXISTS nodes (
@@ -58,8 +96,8 @@ class PolyglotStore:
             )
             """
             )
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes (type)")
 
-            # 3. Graph Store (Edges)
             cur.execute(
                 """
             CREATE TABLE IF NOT EXISTS edges (
@@ -71,13 +109,18 @@ class PolyglotStore:
             )
             """
             )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_edges_source ON edges (source_uid)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_edges_target ON edges (target_uid)"
+            )
 
-            # 4. Vector Store (Simulated)
             cur.execute(
                 """
             CREATE TABLE IF NOT EXISTS vectors (
                 id TEXT PRIMARY KEY,
-                vector BLOB, -- Stored as bytes
+                vector BLOB,
                 metadata JSON
             )
             """
@@ -96,34 +139,51 @@ class PolyglotStore:
                         "INSERT OR REPLACE INTO documents (id, source_type, timestamp, data) VALUES (?, ?, ?, ?)",
                         (doc_id, source_type, timestamp, json.dumps(data)),
                     )
+                    self._index_document(conn, doc_id, data)
                     conn.commit()
-                except Exception as e:
-                    logger.error(f"Error adding document: {e}")
+                except Exception as exc:
+                    logger.error("Error adding document %s: %s", doc_id, exc)
+                finally:
+                    self._purge_if_needed(conn)
 
     def search_documents(
         self, query_key: str, query_value: str
     ) -> List[Dict[str, Any]]:
+        normalized_key = query_key.lower()
+        normalized_value = str(query_value).strip().lower()
+
         with self.get_connection() as conn:
             cur = conn.cursor()
+            if normalized_key in INDEXED_FIELDS:
+                cur.execute(
+                    """
+                SELECT d.data
+                FROM document_index idx
+                JOIN documents d ON d.id = idx.doc_id
+                WHERE idx.key = ? AND idx.value = ?
+                """,
+                    (normalized_key, normalized_value),
+                )
+                rows = cur.fetchall()
+                if rows:
+                    return [json.loads(payload) for (payload,) in rows]
+
             cur.execute("SELECT data FROM documents")
-            results = []
-            for row in cur.fetchall():
-                data = json.loads(row[0])
-                if self._recursive_search(data, query_key, query_value):
-                    results.append(data)
-            return results
+            return [
+                doc
+                for (raw,) in cur.fetchall()
+                if self._recursive_search((doc := json.loads(raw)), normalized_key, normalized_value)
+            ]
 
     def _recursive_search(self, data: Any, key: str, value: str) -> bool:
         if isinstance(data, dict):
             for k, v in data.items():
-                if k == key and str(v).lower() == str(value).lower():
+                if k == key and str(v).lower() == value:
                     return True
                 if self._recursive_search(v, key, value):
                     return True
         elif isinstance(data, list):
-            for item in data:
-                if self._recursive_search(item, key, value):
-                    return True
+            return any(self._recursive_search(item, key, value) for item in data)
         return False
 
     # --- Graph Operations ---
@@ -149,7 +209,7 @@ class PolyglotStore:
 
     def get_subgraph(self, start_uid: str, depth: int = 1) -> Dict[str, Any]:
         nodes = {}
-        edges = []
+        edges: List[Dict[str, Any]] = []
         queue = [(start_uid, 0)]
         visited = set()
 
@@ -215,46 +275,138 @@ class PolyglotStore:
                     (vec_id, blob, json.dumps(metadata)),
                 )
                 conn.commit()
+        self._append_vector_cache(vec_id, vector, metadata)
 
     def search_vectors(
         self, query_vector: np.ndarray, k: int = 5
     ) -> List[Dict[str, Any]]:
+        query_norm = np.linalg.norm(query_vector)
+        if query_norm == 0:
+            return []
+
+        self._ensure_vector_cache()
+        if self._vector_matrix is None or self._vector_matrix.size == 0:
+            return []
+
+        normalized_query = query_vector.astype(np.float32) / query_norm
+        similarities = self._vector_matrix @ normalized_query
+        top_indices = np.argsort(similarities)[::-1][:k]
+
+        matches: List[Dict[str, Any]] = []
+        for idx in top_indices:
+            matches.append(
+                {
+                    "id": self._vector_ids[idx],
+                    "score": float(similarities[idx]),
+                    "metadata": self._vector_metadata[idx],
+                }
+            )
+        return matches
+
+    @property
+    def conn(self):
+        return sqlite3.connect(self.db_path, check_same_thread=False)
+
+    # --- Internal helpers ---
+    def _index_document(self, conn: sqlite3.Connection, doc_id: str, data: Dict[str, Any]):
+        if not INDEXED_FIELDS:
+            return
+        cur = conn.cursor()
+        cur.execute("DELETE FROM document_index WHERE doc_id=?", (doc_id,))
+        for key, value in self._extract_indexable_fields(data)[:MAX_INDEXED_VALUES]:
+            cur.execute(
+                "INSERT OR REPLACE INTO document_index (doc_id, key, value) VALUES (?, ?, ?)",
+                (doc_id, key, value),
+            )
+
+    def _extract_indexable_fields(self, data: Any) -> List[Tuple[str, str]]:
+        results: List[Tuple[str, str]] = []
+
+        def traverse(node: Any):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    lower_key = k.lower()
+                    if isinstance(v, (dict, list)):
+                        traverse(v)
+                    elif lower_key in INDEXED_FIELDS:
+                        val = str(v).strip().lower()
+                        if val:
+                            results.append((lower_key, val))
+            elif isinstance(node, list):
+                for item in node:
+                    traverse(item)
+
+        traverse(data)
+        return results
+
+    def _purge_if_needed(self, conn: sqlite3.Connection):
+        if not self.ttl_seconds:
+            return
+        now = time.time()
+        if now - self._last_purge < max(PURGE_INTERVAL_SECONDS, self.ttl_seconds // 4):
+            return
+        cutoff = now - self.ttl_seconds
+        try:
+            conn.execute(
+                """
+            DELETE FROM documents
+            WHERE source_type != 'audit_log'
+              AND timestamp > 0
+              AND timestamp < ?
+            """,
+                (cutoff,),
+            )
+            conn.commit()
+            self._last_purge = now
+        except Exception as exc:
+            logger.error("Failed to purge expired documents: %s", exc)
+
+    def _ensure_vector_cache(self):
+        if self._vector_cache_loaded:
+            return
+        self._reload_vector_cache()
+
+    def _reload_vector_cache(self):
         with self.get_connection() as conn:
             cur = conn.cursor()
             cur.execute("SELECT id, vector, metadata FROM vectors")
-
-            scores = []
-            query_norm = np.linalg.norm(query_vector)
-            if query_norm == 0:
-                return []
-
+            ids: List[str] = []
+            metadata: List[Dict[str, Any]] = []
+            vectors: List[np.ndarray] = []
             for vid, blob, meta_json in cur.fetchall():
                 vec = np.frombuffer(blob, dtype=np.float32)
-                dot_product = np.dot(query_vector, vec)
-                vec_norm = np.linalg.norm(vec)
-                if vec_norm == 0:
+                norm = np.linalg.norm(vec)
+                if norm == 0:
                     continue
-                similarity = dot_product / (query_norm * vec_norm)
+                vectors.append((vec / norm).astype(np.float32))
+                ids.append(vid)
+                metadata.append(json.loads(meta_json))
 
-                scores.append(
-                    {
-                        "id": vid,
-                        "score": float(similarity),
-                        "metadata": json.loads(meta_json),
-                    }
-                )
+            if vectors:
+                self._vector_matrix = np.vstack(vectors)
+            else:
+                self._vector_matrix = np.empty((0, 0), dtype=np.float32)
+            self._vector_ids = ids
+            self._vector_metadata = metadata
+            self._vector_cache_loaded = True
 
-            scores.sort(key=lambda x: x["score"], reverse=True)
-            return scores[:k]
-
-    # Expose a method to get a raw cursor/conn strictly for read-only stats if needed,
-    # but prefer methods.
-    @property
-    def conn(self):
-        # Backward compatibility hack - returns a new connection that caller must close
-        # Note: This is dangerous if caller expects the old persistent conn behavior
-        # We'll update the caller (API) to use get_connection context instead
-        return sqlite3.connect(self.db_path, check_same_thread=False)
+    def _append_vector_cache(self, vec_id: str, vector: np.ndarray, metadata: Dict[str, Any]):
+        norm = np.linalg.norm(vector)
+        if norm == 0:
+            return
+        normalized = (vector / norm).astype(np.float32)
+        if self._vector_matrix is None or self._vector_matrix.size == 0:
+            self._vector_matrix = normalized.reshape(1, -1)
+        else:
+            try:
+                self._vector_matrix = np.vstack([self._vector_matrix, normalized])
+            except ValueError:
+                # Dimension mismatch – rebuild cache from scratch.
+                self._vector_cache_loaded = False
+                self._reload_vector_cache()
+                return
+        self._vector_ids.append(vec_id)
+        self._vector_metadata.append(metadata)
 
 
 db_instance = PolyglotStore()
