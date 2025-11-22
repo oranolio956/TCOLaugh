@@ -1,0 +1,69 @@
+services:
+  # --- Web Service (FastAPI) ---
+  - type: web
+    name: panopticon-api
+    env: python
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: ANTHROPIC_API_KEY
+        sync: false # Prompt user on deploy
+      - key: PANOPTICON_API_KEY
+        generateValue: true
+      - key: NEO4J_URI
+        fromService:
+          type: pserv
+          name: panopticon-neo4j
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: panopticon-redis
+          property: connectionString
+
+  # --- Worker Service (Celery) ---
+  - type: worker
+    name: panopticon-worker
+    env: python
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A panopticon.worker worker --loglevel=info
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: panopticon-redis
+          property: connectionString
+
+  # --- Background Worker (Crawler) ---
+  - type: worker
+    name: panopticon-crawler
+    env: python
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 -m panopticon.ingestion.tor.crawler
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.9.0
+
+  # --- Private Services (Databases) ---
+  # Note: Render Native Redis
+  - type: redis
+    name: panopticon-redis
+    plan: free
+    ipAllowList: [] # Private only
+
+  # Note: Render doesn't natively support Neo4j/Milvus as managed services.
+  # We use a private docker service or external provider (AuraDB / Zilliz).
+  # For this config, we assume an external connection string is provided or a Docker service.
+  # Below is a Docker-based approach for a self-contained POC on Render (Plan: Pro required usually)
+  # - type: pserv
+  #   name: panopticon-neo4j
+  #   env: docker
+  #   plan: standard
+  #   dockerfilePath: ./infrastructure/Dockerfile.neo4j # Custom wrapper if needed
