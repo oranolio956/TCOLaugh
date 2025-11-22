@@ -54,6 +54,7 @@ python3 panopticon/scenario_test.py
 ## Deployment (Vercel + Render)
 * **Render (API/Workers):** Use `render.yaml`. Render will build `requirements.txt`, fetch the spaCy model, and generate a unique `PANOPTICON_API_KEY`. Set `PANOPTICON_ENABLE_AI_BRIEFING=true` only if you supply a valid `ANTHROPIC_API_KEY`.
 * **Vercel (Dashboard):** Deploy `panopticon/api/templates/index.html` as a static site (see `vercel.json`). At runtime, enter the Render base URL and API key via the Connection Settings card. Nothing sensitive is baked into the frontend bundle.
+* Need a turnkey walkthrough? See `DEPLOYMENT.md` for Render CLI commands, managed Neo4j/Milvus/Kafka notes, and operational checklists.
 
 ## Configuration Flags
 | Variable | Default | Purpose |
