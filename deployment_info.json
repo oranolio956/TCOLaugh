@@ -9,5 +9,10 @@
     "worker": "panopticon-worker-847835",
     "crawler": "panopticon-crawler-847835"
   },
-  "api_endpoint": "https://panopticon-api-847835.onrender.com"
+  "api_endpoint": "https://panopticon-api-847835.onrender.com",
+  "service_ids": {
+    "Web API": "srv-d4h30a3uibrs73dbtiig",
+    "Worker": "srv-d4h30bn5r7bs73bjq5i0",
+    "Crawler": "srv-d4h30chr0fns73a0380g"
+  }
 }
