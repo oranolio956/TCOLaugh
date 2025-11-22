@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: panopticon-api-847779
+    name: panopticon-api-847835
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
@@ -9,7 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.9"
       - key: PANOPTICON_API_KEY
-        value: pano_H6zTsFFmT8yVQoZAc2NyvkcuRwOnvlfX
+        value: pano_u5KwqEjJHDt9rkUH4yOwefZkl8OVfpiK
       - key: PANOPTICON_ENABLE_AI_BRIEFING
         value: "false"
       - key: PANOPTICON_MAX_UPLOAD_BYTES
@@ -21,7 +21,7 @@ services:
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
-        value: neo4j_zzT8uzvF6npouQuDZ7VSIRjx
+        value: neo4j_27r1UAefn49TCstCGneKjTFN
       - key: MILVUS_HOST
         value: localhost
       - key: MILVUS_PORT
@@ -44,7 +44,7 @@ services:
       sizeGB: 1
 
   - type: worker
-    name: panopticon-worker-847779
+    name: panopticon-worker-847835
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
@@ -59,7 +59,7 @@ services:
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
-        value: neo4j_zzT8uzvF6npouQuDZ7VSIRjx
+        value: neo4j_27r1UAefn49TCstCGneKjTFN
       - key: MILVUS_HOST
         value: localhost
       - key: MILVUS_PORT
@@ -68,7 +68,7 @@ services:
         value: /var/data/panopticon.db
 
   - type: worker
-    name: panopticon-crawler-847779
+    name: panopticon-crawler-847835
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
