@@ -1,55 +1,27 @@
-version: '3.8'
-
-services:
-  # --- Ingestion Layer ---
-  kafka:
-    image: confluentinc/cp-kafka:latest
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    depends_on:
-      - zookeeper
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-
-  # --- Persistence Layer ---
-  neo4j:
-    image: neo4j:latest
-    environment:
-      NEO4J_AUTH: neo4j/password
+  # --- Queueing System ---
+  redis:
+    image: redis:7.0.5
+    container_name: panopticon_redis
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - "6379:6379"
+    command: redis-server --save 60 1 --loglevel warning
     volumes:
-      - neo4j_data:/data
-
-  opensearch:
-    image: opensearchproject/opensearch:latest
-    environment:
-      - discovery.type=single-node
-    ports:
-      - "9200:9200"
-      - "9600:9600"
-    volumes:
-      - opensearch_data:/usr/share/opensearch/data
-
-  # Note: Vearch or Milvus would be configured here for Vector Search
-  # For this scaffold, we represent the intent.
-
-  # --- Application Services ---
-  # api:
-  #   build: ./api
-  #   ports:
-  #     - "8000:8000"
+      - redis_data:/data
+  
+  # --- Worker Nodes (Scalable) ---
+  # worker:
+  #   build: .
+  #   command: celery -A panopticon.worker worker --loglevel=info
   #   depends_on:
+  #     - redis
   #     - neo4j
-  #     - opensearch
-  #     - kafka
+  #     - milvus
 
 volumes:
   neo4j_data:
+  neo4j_logs:
+  milvus_etcd:
+  milvus_minio:
+  milvus_data:
   opensearch_data:
+  redis_data:
