@@ -1,0 +1,36 @@
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs & runtime artifacts
+*.log
+*.sqlite3
+*.db
+panopticon.db
+api.log
+crawler.log
+simulation.log
+
+# Python cache
+.mypy_cache/
+.pytest_cache/
+
+# Data & uploads
+uploads/
+/tmp/
+
+# System
+.DS_Store
+Thumbs.db

@@ -4,20 +4,21 @@ services:
     name: panopticon-api
     env: python
     plan: standard
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m spacy download en_core_web_sm
     startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 10000
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
-      - key: ANTHROPIC_API_KEY
-        sync: false # Prompt user on deploy
       - key: PANOPTICON_API_KEY
         generateValue: true
-      - key: NEO4J_URI
-        fromService:
-          type: pserv
-          name: panopticon-neo4j
-          property: connectionString
+      - key: PANOPTICON_ENABLE_AI_BRIEFING
+        value: "false"
+      - key: PANOPTICON_MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: ANTHROPIC_API_KEY
+        sync: false # Prompt user on deploy
       - key: REDIS_URL
         fromService:
           type: redis
@@ -29,7 +30,9 @@ services:
     name: panopticon-worker
     env: python
     plan: standard
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m spacy download en_core_web_sm
     startCommand: celery -A panopticon.worker worker --loglevel=info
     envVars:
       - key: PYTHON_VERSION
@@ -45,7 +48,9 @@ services:
     name: panopticon-crawler
     env: python
     plan: standard
-    buildCommand: pip install -r requirements.txt
+    buildCommand: |
+      pip install -r requirements.txt
+      python -m spacy download en_core_web_sm
     startCommand: python3 -m panopticon.ingestion.tor.crawler
     envVars:
       - key: PYTHON_VERSION

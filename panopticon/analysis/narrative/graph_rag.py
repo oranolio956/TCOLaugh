@@ -7,26 +7,38 @@ from anthropic import Anthropic
 logger = logging.getLogger(__name__)
 
 
+def _ai_enabled() -> bool:
+    return os.environ.get("PANOPTICON_ENABLE_AI_BRIEFING", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+
 class GraphNarrator:
     def __init__(self):
+        self.enabled = _ai_enabled()
         api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if api_key:
+        if self.enabled and api_key:
             self.client = Anthropic(api_key=api_key)
             logger.info("GraphNarrator initialized with Anthropic API.")
         else:
             self.client = None
-            logger.warning(
-                "GraphNarrator: No ANTHROPIC_API_KEY found. AI features disabled."
+            reason = (
+                "API disabled via PANOPTICON_ENABLE_AI_BRIEFING"
+                if not self.enabled
+                else "ANTHROPIC_API_KEY missing"
             )
+            logger.warning("GraphNarrator disabled: %s.", reason)
 
     def generate_briefing(
         self, target: str, graph_data: Dict[str, Any], risks: Dict[str, Any]
     ) -> str:
         """
-        Uses Claude to synthesize a graph into an intelligence briefing.
+        Uses Claude to synthesize a graph into an intelligence briefing when enabled.
         """
-        if not self.client:
-            return "AI Intelligence Briefing unavailable (API Key missing)."
+        if not (self.enabled and self.client):
+            return "AI Intelligence Briefing disabled. Set PANOPTICON_ENABLE_AI_BRIEFING=true to opt in."
 
         # Serialize graph for context
         nodes_desc = []

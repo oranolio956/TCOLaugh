@@ -1,7 +1,11 @@
 import logging
 import os
+import secrets
+import tempfile
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,6 +23,7 @@ app = FastAPI(
     title="Panopticon API", description="Identity Resolution Platform Interface"
 )
 logger = logging.getLogger("uvicorn")
+MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
 
 # Add Security Middleware
 app.add_middleware(SecurityMiddleware)
@@ -44,6 +49,19 @@ class PersonSearchRequest(BaseModel):
 
 class ReconRequest(BaseModel):
     username: str
+
+
+def _sanitize_filename(filename: Optional[str]) -> str:
+    """
+    Prevent directory traversal and ensure predictable temp files.
+    """
+    if not filename:
+        return f"upload_{secrets.token_hex(4)}"
+    candidate = Path(filename).name
+    safe = "".join(ch for ch in candidate if ch.isalnum() or ch in {"-", "_", "."})
+    if not safe or safe.startswith("."):
+        return f"upload_{secrets.token_hex(4)}"
+    return safe
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -73,7 +91,13 @@ async def search_person(query: PersonSearchRequest):
     """
     Searches the Polyglot Store.
     """
-    logger.info(f"Received search query: {query}")
+    filtered_query = query.dict(exclude_none=True)
+    if not filtered_query:
+        raise HTTPException(
+            status_code=422, detail="Provide at least one search attribute."
+        )
+    requested_fields = list(filtered_query.keys())  # Avoid logging raw values
+    logger.info("Processing search query for fields=%s", requested_fields)
     results = []
 
     # 1. Document Search (Naive)
@@ -134,37 +158,49 @@ async def search_person(query: PersonSearchRequest):
 @app.post("/search/face")
 async def search_face(file: UploadFile = File(...)):
     try:
-        temp_path = f"/tmp/{file.filename}"
-        with open(temp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-
-        detections = face_engine.process_image(temp_path)
-
-        if not detections:
-            return {"message": "No faces detected"}
-
-        # Search Vectors
-        matches = []
-        for det in detections:
-            emb = det["embedding"]
-            # Convert list back to numpy for search
-            import numpy as np
-
-            vec_matches = db_instance.search_vectors(
-                np.array(emb, dtype=np.float32)
-            )
-            matches.append(
-                {
-                    "face_score": det["detection_score"],
-                    "db_matches": vec_matches,
-                }
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="Empty file upload.")
+        if len(contents) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File too large. Limit is {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
             )
 
-        return {"message": f"Found {len(detections)} face(s)", "matches": matches}
+        safe_name = _sanitize_filename(file.filename)
+        temp_dir = Path(tempfile.mkdtemp(prefix="panopticon_upload_"))
+        temp_path = temp_dir / safe_name
+
+        try:
+            temp_path.write_bytes(contents)
+            detections = face_engine.process_image(str(temp_path))
+
+            if not detections:
+                return {"message": "No faces detected"}
+
+            matches = []
+            for det in detections:
+                emb = np.array(det["embedding"], dtype=np.float32)
+                vec_matches = db_instance.search_vectors(emb)
+                matches.append(
+                    {
+                        "face_score": det["detection_score"],
+                        "db_matches": vec_matches,
+                    }
+                )
+
+            return {"message": f"Found {len(detections)} face(s)", "matches": matches}
+        finally:
+            try:
+                temp_path.unlink(missing_ok=True)
+                temp_dir.rmdir()
+            except OSError:
+                pass
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in face search: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Face search failed.")
 
 
 @app.post("/recon/username")

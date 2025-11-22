@@ -16,7 +16,16 @@ dependencies = [
     "uvicorn>=0.22",
     "pydantic>=1.10",
     "numpy",
-    "pandas"
+    "pandas",
+    "requests>=2.31",
+    "anthropic>=0.25",
+    "opencv-python-headless>=4.9",
+    "python-multipart>=0.0.6",
+    "paddleocr>=2.7",
+    "spacy>=3.7",
+    "celery>=5.3",
+    "redis>=5.0",
+    "pymilvus>=2.4"
 ]
 requires-python = ">=3.9"
 
