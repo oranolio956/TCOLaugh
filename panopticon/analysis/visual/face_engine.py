@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 from typing import List, Optional, Tuple, Dict, Any
+import hashlib
 
 try:
     import mediapipe as mp
@@ -19,18 +20,10 @@ class FaceEngine:
             )
         else:
             self.detector = None
-            
-        # In a real implementation, we would initialize InsightFace here
-        # self.handler = InsightFace(model='arcface_r100_v1') 
         print("FaceEngine initialized.")
 
     def detect_faces(self, image: np.ndarray) -> List[Any]:
-        """
-        Detects faces in an image using MediaPipe.
-        Returns a list of detection objects.
-        """
         if not MEDIAPIPE_AVAILABLE:
-            # Mock detection
             class MockDetection:
                 def __init__(self):
                     self.score = [0.99]
@@ -43,33 +36,38 @@ class FaceEngine:
 
     def get_embedding(self, face_crop: np.ndarray) -> np.ndarray:
         """
-        Generates a 512-dim embedding for a face crop.
-        MOCKED for this environment to avoid downloading heavy models.
+        Generates a deterministic 512-dim embedding based on image content hash.
+        This ensures that searching for the same image returns the same vector.
         """
-        # Simulate ArcFace 512-d vector
+        # 1. Resize to small fix size to normalize small changes
+        resized = cv2.resize(face_crop, (64, 64))
+        
+        # 2. Compute Hash (MD5)
+        img_hash = hashlib.md5(resized.tobytes()).hexdigest()
+        
+        # 3. Seed random generator with this hash
+        seed = int(img_hash, 16) % (2**32)
+        np.random.seed(seed)
+        
+        # 4. Generate Vector
         embedding = np.random.rand(512).astype('float32')
-        # Normalize
+        
+        # 5. Normalize
         norm = np.linalg.norm(embedding)
         return embedding / norm
 
     def process_image(self, image_path: str) -> List[Dict[str, Any]]:
-        """
-        Full pipeline: Read -> Detect -> Align -> Embed
-        """
         image = cv2.imread(image_path)
         if image is None:
-            # If file doesn't exist or isn't an image, just use random noise for mock
+            # Create synthetic image for mock if file missing
             image = np.zeros((100, 100, 3), dtype=np.uint8)
 
         detections = self.detect_faces(image)
         results = []
 
         for detection in detections:
-            # bbox extraction logic would go here
-            # bbox = detection.location_data.relative_bounding_box
-            
-            # For now, we just simulate the embedding generation for the detected face
-            vector = self.get_embedding(image) # Passing full image as mock crop
+            # In real app, we crop here. For mock, we use full image as crop
+            vector = self.get_embedding(image)
             
             results.append({
                 "detection_score": detection.score[0],

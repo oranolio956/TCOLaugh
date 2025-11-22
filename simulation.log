@@ -1,0 +1,122 @@
+2025-11-22 19:18:17,433 - MainThread - Seeding database...
+2025-11-22 19:18:17,809 - MainThread - Seeding complete.
+2025-11-22 19:18:17,809 - MainThread - >>> STARTING 50-AGENT SIMULATION <<<
+2025-11-22 19:18:17,828 - ThreadPoolExecutor-0_2 - [Agent-03] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_0 - [Agent-01] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_1 - [Agent-02] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_3 - [Agent-04] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_6 - [Agent-07] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_7 - [Agent-08] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,833 - ThreadPoolExecutor-0_4 - [Agent-05] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,834 - ThreadPoolExecutor-0_5 - [Agent-06] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,834 - ThreadPoolExecutor-0_9 - [Agent-10] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,834 - ThreadPoolExecutor-0_8 - [Agent-09] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,836 - ThreadPoolExecutor-0_11 - [Agent-12] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,837 - ThreadPoolExecutor-0_13 - [Agent-14] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,837 - ThreadPoolExecutor-0_14 - [Agent-15] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,837 - ThreadPoolExecutor-0_12 - [Agent-13] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,838 - ThreadPoolExecutor-0_10 - [Agent-11] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,838 - ThreadPoolExecutor-0_17 - [Agent-18] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,838 - ThreadPoolExecutor-0_18 - [Agent-19] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,838 - ThreadPoolExecutor-0_15 - [Agent-16] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,838 - ThreadPoolExecutor-0_16 - [Agent-17] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,839 - ThreadPoolExecutor-0_19 - [Agent-20] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 2}
+2025-11-22 19:18:17,948 - ThreadPoolExecutor-0_14 - [Agent-15] Search username=target_user_15 -> Found 1
+2025-11-22 19:18:17,952 - ThreadPoolExecutor-0_12 - [Agent-13] Search email=target_13@shadow.net -> Found 1
+2025-11-22 19:18:17,964 - ThreadPoolExecutor-0_13 - [Agent-14] Search username=target_user_14 -> Found 1
+2025-11-22 19:18:17,985 - ThreadPoolExecutor-0_5 - [Agent-06] Search username=target_user_6 -> Found 1
+2025-11-22 19:18:17,989 - ThreadPoolExecutor-0_16 - [Agent-17] Search email=target_17@shadow.net -> Found 1
+2025-11-22 19:18:18,016 - ThreadPoolExecutor-0_8 - [Agent-09] Search username=target_user_9 -> Found 1
+2025-11-22 19:18:18,024 - ThreadPoolExecutor-0_6 - [Agent-07] Search username=target_user_7 -> Found 1
+2025-11-22 19:18:18,041 - ThreadPoolExecutor-0_0 - [Agent-01] Search username=target_user_1 -> Found 1
+2025-11-22 19:18:18,072 - ThreadPoolExecutor-0_2 - [Agent-03] Search username=target_user_3 -> Found 1
+2025-11-22 19:18:18,110 - ThreadPoolExecutor-0_9 - [Agent-10] Search username=target_user_10 -> Found 1
+2025-11-22 19:18:18,115 - ThreadPoolExecutor-0_4 - [Agent-05] Search email=target_5@shadow.net -> Found 1
+2025-11-22 19:18:18,128 - ThreadPoolExecutor-0_10 - [Agent-11] Search username=target_user_11 -> Found 1
+2025-11-22 19:18:18,134 - ThreadPoolExecutor-0_14 - [Agent-21] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 14}
+2025-11-22 19:18:18,147 - ThreadPoolExecutor-0_1 - [Agent-02] Search email=target_2@shadow.net -> Found 1
+2025-11-22 19:18:18,155 - ThreadPoolExecutor-0_6 - [Agent-22] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 15}
+2025-11-22 19:18:18,194 - ThreadPoolExecutor-0_3 - [Agent-04] Search email=target_4@shadow.net -> Found 1
+2025-11-22 19:18:18,204 - ThreadPoolExecutor-0_17 - [Agent-18] Search username=target_user_18 -> Found 1
+2025-11-22 19:18:18,228 - ThreadPoolExecutor-0_18 - [Agent-19] Search username=target_user_19 -> Found 1
+2025-11-22 19:18:18,230 - ThreadPoolExecutor-0_16 - [Agent-23] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 18}
+2025-11-22 19:18:18,232 - ThreadPoolExecutor-0_10 - [Agent-24] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 18}
+2025-11-22 19:18:18,243 - ThreadPoolExecutor-0_15 - [Agent-16] Search username=target_user_16 -> Found 1
+2025-11-22 19:18:18,248 - ThreadPoolExecutor-0_11 - [Agent-12] Search email=target_12@shadow.net -> Found 1
+2025-11-22 19:18:18,274 - ThreadPoolExecutor-0_19 - [Agent-20] Search username=target_user_20 -> Found 1
+2025-11-22 19:18:18,289 - ThreadPoolExecutor-0_13 - [Agent-25] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 21}
+2025-11-22 19:18:18,319 - ThreadPoolExecutor-0_14 - [Agent-21] Search username=target_user_21 -> Found 1
+2025-11-22 19:18:18,320 - ThreadPoolExecutor-0_5 - [Agent-26] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 22}
+2025-11-22 19:18:18,327 - ThreadPoolExecutor-0_7 - [Agent-08] Search email=target_8@shadow.net -> Found 1
+2025-11-22 19:18:18,357 - ThreadPoolExecutor-0_17 - [Agent-27] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 23}
+2025-11-22 19:18:18,391 - ThreadPoolExecutor-0_3 - [Agent-28] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 23}
+2025-11-22 19:18:18,396 - ThreadPoolExecutor-0_6 - [Agent-22] Search email=target_22@shadow.net -> Found 1
+2025-11-22 19:18:18,421 - ThreadPoolExecutor-0_12 - [Agent-29] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 24}
+2025-11-22 19:18:18,436 - ThreadPoolExecutor-0_10 - [Agent-24] Search username=target_user_24 -> Found 1
+2025-11-22 19:18:18,449 - ThreadPoolExecutor-0_14 - [Agent-30] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 25}
+2025-11-22 19:18:18,481 - ThreadPoolExecutor-0_16 - [Agent-23] Search email=target_23@shadow.net -> Found 1
+2025-11-22 19:18:18,508 - ThreadPoolExecutor-0_2 - [Agent-31] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 26}
+2025-11-22 19:18:18,555 - ThreadPoolExecutor-0_14 - [Agent-30] Search email=target_30@shadow.net -> Found 1
+2025-11-22 19:18:18,596 - ThreadPoolExecutor-0_13 - [Agent-25] Search email=target_25@shadow.net -> Found 1
+2025-11-22 19:18:18,613 - ThreadPoolExecutor-0_18 - [Agent-32] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 28}
+2025-11-22 19:18:18,639 - ThreadPoolExecutor-0_11 - [Agent-33] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 28}
+2025-11-22 19:18:18,660 - ThreadPoolExecutor-0_17 - [Agent-27] Search username=target_user_27 -> Found 1
+2025-11-22 19:18:18,715 - ThreadPoolExecutor-0_12 - [Agent-29] Search username=target_user_29 -> Found 1
+2025-11-22 19:18:18,768 - ThreadPoolExecutor-0_3 - [Agent-28] Search username=target_user_28 -> Found 1
+2025-11-22 19:18:18,788 - ThreadPoolExecutor-0_5 - [Agent-26] Search username=target_user_26 -> Found 1
+2025-11-22 19:18:18,797 - ThreadPoolExecutor-0_2 - [Agent-31] Search username=target_user_31 -> Found 1
+2025-11-22 19:18:18,813 - ThreadPoolExecutor-0_10 - [Agent-34] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 33}
+2025-11-22 19:18:18,855 - ThreadPoolExecutor-0_6 - [Agent-35] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 33}
+2025-11-22 19:18:18,856 - ThreadPoolExecutor-0_17 - [Agent-36] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 33}
+2025-11-22 19:18:18,948 - ThreadPoolExecutor-0_14 - [Agent-37] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 33}
+2025-11-22 19:18:19,027 - ThreadPoolExecutor-0_18 - [Agent-32] Search username=target_user_32 -> Found 1
+2025-11-22 19:18:19,080 - ThreadPoolExecutor-0_10 - [Agent-34] Search email=target_34@shadow.net -> Found 1
+2025-11-22 19:18:19,115 - ThreadPoolExecutor-0_3 - [Agent-38] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 35}
+2025-11-22 19:18:19,131 - ThreadPoolExecutor-0_11 - [Agent-33] Search email=target_33@shadow.net -> Found 1
+2025-11-22 19:18:19,179 - ThreadPoolExecutor-0_17 - [Agent-36] Search email=target_36@shadow.net -> Found 1
+2025-11-22 19:18:19,183 - ThreadPoolExecutor-0_12 - [Agent-39] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 37}
+2025-11-22 19:18:19,227 - ThreadPoolExecutor-0_14 - [Agent-37] Search username=target_user_37 -> Found 1
+2025-11-22 19:18:19,320 - ThreadPoolExecutor-0_3 - [Agent-38] Search username=target_user_38 -> Found 1
+2025-11-22 19:18:19,333 - ThreadPoolExecutor-0_6 - [Agent-35] Search email=target_35@shadow.net -> Found 1
+2025-11-22 19:18:19,480 - ThreadPoolExecutor-0_10 - [Agent-40] Stats Checked: {'documents': 103, 'nodes': 106, 'edges': 5, 'audit_logs': 40}
+2025-11-22 19:18:19,533 - ThreadPoolExecutor-0_9 - [Agent-10] Recon target_user_10 -> Success
+2025-11-22 19:18:19,535 - ThreadPoolExecutor-0_9 - [Agent-41] Stats Checked: {'documents': 104, 'nodes': 106, 'edges': 5, 'audit_logs': 40}
+2025-11-22 19:18:19,539 - ThreadPoolExecutor-0_11 - [Agent-42] Stats Checked: {'documents': 104, 'nodes': 106, 'edges': 5, 'audit_logs': 41}
+2025-11-22 19:18:19,541 - ThreadPoolExecutor-0_12 - [Agent-39] Search username=target_user_39 -> Found 1
+2025-11-22 19:18:19,565 - ThreadPoolExecutor-0_3 - [Agent-43] Stats Checked: {'documents': 104, 'nodes': 106, 'edges': 5, 'audit_logs': 41}
+2025-11-22 19:18:19,633 - ThreadPoolExecutor-0_0 - [Agent-01] Recon target_user_1 -> Success
+2025-11-22 19:18:19,637 - ThreadPoolExecutor-0_0 - [Agent-44] Stats Checked: {'documents': 105, 'nodes': 106, 'edges': 5, 'audit_logs': 41}
+2025-11-22 19:18:19,684 - ThreadPoolExecutor-0_9 - [Agent-41] Search email=target_41@shadow.net -> Found 1
+2025-11-22 19:18:19,705 - ThreadPoolExecutor-0_4 - [Agent-05] Recon target_user_5 -> Success
+2025-11-22 19:18:19,713 - ThreadPoolExecutor-0_4 - [Agent-45] Stats Checked: {'documents': 106, 'nodes': 106, 'edges': 5, 'audit_logs': 42}
+2025-11-22 19:18:19,718 - ThreadPoolExecutor-0_14 - [Agent-46] Stats Checked: {'documents': 106, 'nodes': 106, 'edges': 5, 'audit_logs': 42}
+2025-11-22 19:18:19,753 - ThreadPoolExecutor-0_8 - [Agent-09] Recon target_user_9 -> Success
+2025-11-22 19:18:19,755 - ThreadPoolExecutor-0_8 - [Agent-47] Stats Checked: {'documents': 107, 'nodes': 106, 'edges': 5, 'audit_logs': 42}
+2025-11-22 19:18:19,760 - ThreadPoolExecutor-0_0 - [Agent-44] Search email=target_44@shadow.net -> Found 1
+2025-11-22 19:18:19,793 - ThreadPoolExecutor-0_6 - [Agent-48] Stats Checked: {'documents': 107, 'nodes': 106, 'edges': 5, 'audit_logs': 43}
+2025-11-22 19:18:19,819 - ThreadPoolExecutor-0_4 - [Agent-45] Search email=target_45@shadow.net -> Found 1
+2025-11-22 19:18:19,834 - ThreadPoolExecutor-0_15 - [Agent-16] Recon target_user_16 -> Success
+2025-11-22 19:18:19,836 - ThreadPoolExecutor-0_15 - [Agent-49] Stats Checked: {'documents': 108, 'nodes': 106, 'edges': 5, 'audit_logs': 44}
+2025-11-22 19:18:19,890 - ThreadPoolExecutor-0_11 - [Agent-42] Search email=target_42@shadow.net -> Found 1
+2025-11-22 19:18:19,905 - ThreadPoolExecutor-0_1 - [Agent-02] Recon target_user_2 -> Success
+2025-11-22 19:18:19,907 - ThreadPoolExecutor-0_1 - [Agent-50] Stats Checked: {'documents': 109, 'nodes': 106, 'edges': 5, 'audit_logs': 45}
+2025-11-22 19:18:19,968 - ThreadPoolExecutor-0_10 - [Agent-40] Search username=target_user_40 -> Found 1
+2025-11-22 19:18:19,971 - ThreadPoolExecutor-0_3 - [Agent-43] Search email=target_43@shadow.net -> Found 1
+2025-11-22 19:18:19,975 - ThreadPoolExecutor-0_6 - [Agent-48] Search username=target_user_48 -> Found 1
+2025-11-22 19:18:19,981 - ThreadPoolExecutor-0_14 - [Agent-46] Search username=target_user_46 -> Found 1
+2025-11-22 19:18:19,993 - ThreadPoolExecutor-0_7 - [Agent-08] Recon target_user_8 -> Success
+2025-11-22 19:18:19,999 - ThreadPoolExecutor-0_19 - [Agent-20] Recon target_user_20 -> Success
+2025-11-22 19:18:20,001 - ThreadPoolExecutor-0_16 - [Agent-23] Recon target_user_23 -> Success
+2025-11-22 19:18:20,147 - ThreadPoolExecutor-0_15 - [Agent-49] Search username=target_user_49 -> Found 1
+2025-11-22 19:18:20,204 - ThreadPoolExecutor-0_1 - [Agent-50] Search username=target_user_50 -> Found 1
+2025-11-22 19:18:20,207 - ThreadPoolExecutor-0_8 - [Agent-47] Search username=target_user_47 -> Found 1
+2025-11-22 19:18:20,335 - ThreadPoolExecutor-0_13 - [Agent-25] Recon target_user_25 -> Success
+2025-11-22 19:18:20,701 - ThreadPoolExecutor-0_2 - [Agent-31] Recon target_user_31 -> Success
+2025-11-22 19:18:20,733 - ThreadPoolExecutor-0_5 - [Agent-26] Recon target_user_26 -> Success
+2025-11-22 19:18:20,907 - ThreadPoolExecutor-0_17 - [Agent-36] Recon target_user_36 -> Success
+2025-11-22 19:18:20,956 - ThreadPoolExecutor-0_0 - [Agent-44] Recon target_user_44 -> Success
+2025-11-22 19:18:21,124 - ThreadPoolExecutor-0_18 - [Agent-32] Recon target_user_32 -> Success
+2025-11-22 19:18:21,232 - ThreadPoolExecutor-0_14 - [Agent-46] Recon target_user_46 -> Success
+2025-11-22 19:18:21,447 - ThreadPoolExecutor-0_15 - [Agent-49] Recon target_user_49 -> Success
+2025-11-22 19:18:21,453 - ThreadPoolExecutor-0_4 - [Agent-45] Recon target_user_45 -> Success
+2025-11-22 19:18:21,455 - MainThread - >>> SIMULATION COMPLETE in 3.65s <<<
