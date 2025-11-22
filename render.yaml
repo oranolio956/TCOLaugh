@@ -1,92 +1,80 @@
 services:
-  # --- Web Service (FastAPI) ---
-    - type: web
-      name: panopticon-api
-      env: python
-      plan: standard
-      buildCommand: |
-        pip install -r requirements.txt
-        python -m spacy download en_core_web_sm
-      startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 10000
-      envVars:
-        - key: PYTHON_VERSION
-          value: 3.9.0
-        - key: PANOPTICON_API_KEY
-          generateValue: true
-        - key: PANOPTICON_ENABLE_AI_BRIEFING
-          value: "false"
-        - key: PANOPTICON_MAX_UPLOAD_BYTES
-          value: "5242880"
-        - key: PANOPTICON_DB_PATH
-          value: /var/panopticon/data/panopticon.db
-        - key: NEO4J_URI
-          value: bolt://panopticon-neo4j:7687
-        - key: NEO4J_USER
-          value: neo4j
-        - key: NEO4J_PASSWORD
-          sync: false
-        - key: MILVUS_HOST
-          value: panopticon-milvus
-        - key: MILVUS_PORT
-          value: "19530"
-        - key: PANOPTICON_USE_KAFKA
-          value: "false"
-        - key: ANTHROPIC_API_KEY
-          sync: false # Prompt user on deploy
-        - key: REDIS_URL
-          fromService:
-            type: redis
-            name: panopticon-redis
-            property: connectionString
+  - type: web
+    name: panopticon-api-847779
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.9"
+      - key: PANOPTICON_API_KEY
+        value: pano_H6zTsFFmT8yVQoZAc2NyvkcuRwOnvlfX
+      - key: PANOPTICON_ENABLE_AI_BRIEFING
+        value: "false"
+      - key: PANOPTICON_MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: PANOPTICON_DB_PATH
+        value: /var/data/panopticon.db
+      - key: NEO4J_URI
+        value: bolt://localhost:7687
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        value: neo4j_zzT8uzvF6npouQuDZ7VSIRjx
+      - key: MILVUS_HOST
+        value: localhost
+      - key: MILVUS_PORT
+        value: "19530"
+      - key: PANOPTICON_USE_KAFKA
+        value: "false"
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: PANOPTICON_DOCUMENT_TTL_SECONDS
+        value: "0"
+      - key: PANOPTICON_INDEX_FIELDS
+        value: email,username,phone,ip_address
+      - key: PANOPTICON_RECON_TIMEOUT
+        value: "6"
+      - key: PANOPTICON_AI_GRAPH_LIMIT
+        value: "40"
     disk:
-      name: panopticon-data
-      mountPath: /var/panopticon
+      name: data
+      mountPath: /var/data
       sizeGB: 1
 
-  # --- Worker Service (Celery) ---
   - type: worker
-    name: panopticon-worker
-    env: python
-    plan: standard
-    buildCommand: |
-      pip install -r requirements.txt
-      python -m spacy download en_core_web_sm
+    name: panopticon-worker-847779
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
     startCommand: celery -A panopticon.worker worker --loglevel=info
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0
+        value: "3.9"
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: panopticon-redis
-          property: connectionString
+        value: redis://localhost:6379
+      - key: NEO4J_URI
+        value: bolt://localhost:7687
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        value: neo4j_zzT8uzvF6npouQuDZ7VSIRjx
+      - key: MILVUS_HOST
+        value: localhost
+      - key: MILVUS_PORT
+        value: "19530"
+      - key: PANOPTICON_DB_PATH
+        value: /var/data/panopticon.db
 
-  # --- Background Worker (Crawler) ---
   - type: worker
-    name: panopticon-crawler
-    env: python
-    plan: standard
-    buildCommand: |
-      pip install -r requirements.txt
-      python -m spacy download en_core_web_sm
-    startCommand: python3 -m panopticon.ingestion.tor.crawler
+    name: panopticon-crawler-847779
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python3 panopticon/ingestion/crawlers/mock_crawler.py --continuous --delay 30
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.0
-
-  # --- Private Services (Databases) ---
-  # Note: Render Native Redis
-  - type: redis
-    name: panopticon-redis
-    plan: free
-    ipAllowList: [] # Private only
-
-  # Note: Render doesn't natively support Neo4j/Milvus as managed services.
-  # We use a private docker service or external provider (AuraDB / Zilliz).
-  # For this config, we assume an external connection string is provided or a Docker service.
-  # Below is a Docker-based approach for a self-contained POC on Render (Plan: Pro required usually)
-  # - type: pserv
-  #   name: panopticon-neo4j
-  #   env: docker
-  #   plan: standard
-  #   dockerfilePath: ./infrastructure/Dockerfile.neo4j # Custom wrapper if needed
+        value: "3.9"
+      - key: PANOPTICON_USE_KAFKA
+        value: "false"
