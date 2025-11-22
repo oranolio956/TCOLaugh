@@ -1,0 +1,13 @@
+{
+  "timestamp": "847779",
+  "credentials": {
+    "PANOPTICON_API_KEY": "pano_H6zTsFFmT8yVQoZAc2NyvkcuRwOnvlfX",
+    "NEO4J_PASSWORD": "neo4j_zzT8uzvF6npouQuDZ7VSIRjx"
+  },
+  "services": {
+    "api": "panopticon-api-847779",
+    "worker": "panopticon-worker-847779",
+    "crawler": "panopticon-crawler-847779"
+  },
+  "api_endpoint": "https://panopticon-api-847779.onrender.com"
+}
