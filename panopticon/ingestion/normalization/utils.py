@@ -1,5 +1,6 @@
 import re
 
+
 class Normalizer:
     @staticmethod
     def normalize_email(email: str) -> str:
@@ -18,21 +19,21 @@ class Normalizer:
         """
         if not phone:
             return ""
-        
+
         # Remove all non-digit characters
-        digits = re.sub(r'\D', '', phone)
-        
+        digits = re.sub(r"\D", "", phone)
+
         # Assume US if 10 digits, prefix with +1
         if len(digits) == 10:
             return f"+1{digits}"
         # If 11 digits and starts with 1, prefix with +
-        elif len(digits) == 11 and digits.startswith('1'):
+        elif len(digits) == 11 and digits.startswith("1"):
             return f"+{digits}"
-        
+
         # Fallback: return as is with + if it looks like a full intl number
         if len(digits) > 7:
-             return f"+{digits}"
-             
+            return f"+{digits}"
+
         return digits
 
     @staticmethod

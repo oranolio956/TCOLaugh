@@ -1,7 +1,9 @@
-from neo4j import GraphDatabase
 import logging
 
+from neo4j import GraphDatabase
+
 logger = logging.getLogger(__name__)
+
 
 class GraphManager:
     def __init__(self, uri: str, auth: tuple):
@@ -22,7 +24,9 @@ class GraphManager:
             session.run(query, **person_data)
             logger.info(f"Created/Merged Person {person_data.get('uid')}")
 
-    def link_identifier(self, person_uid: str, identifier_type: str, identifier_value: str):
+    def link_identifier(
+        self, person_uid: str, identifier_type: str, identifier_value: str
+    ):
         """
         Links a Person to an identifier (Email, Phone, etc.)
         """

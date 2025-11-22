@@ -1,11 +1,13 @@
-import spacy
-from paddleocr import PaddleOCR
 import logging
+from typing import Any, Dict, List
+
 import cv2
 import numpy as np
-from typing import List, Dict, Any
+import spacy
+from paddleocr import PaddleOCR
 
 logger = logging.getLogger(__name__)
+
 
 class IntelExtractor:
     def __init__(self):
@@ -16,12 +18,12 @@ class IntelExtractor:
         except Exception as e:
             logger.error(f"Failed to load spaCy: {e}")
             self.nlp = None
-        
+
         # Initialize OCR
         # use_angle_cls=True enables orientation detection
         # lang='en' for English
         try:
-            self.ocr = PaddleOCR(use_angle_cls=True, lang='en', show_log=False)
+            self.ocr = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
             logger.info("PaddleOCR initialized.")
         except Exception as e:
             logger.error(f"Failed to load PaddleOCR: {e}")
@@ -33,18 +35,18 @@ class IntelExtractor:
         """
         if not self.nlp or not text:
             return {}
-            
+
         doc = self.nlp(text)
         entities = {"PERSON": [], "ORG": [], "GPE": [], "DATE": []}
-        
+
         for ent in doc.ents:
             if ent.label_ in entities:
                 entities[ent.label_].append(ent.text)
-                
+
         # Deduplicate
         for k in entities:
             entities[k] = list(set(entities[k]))
-            
+
         return entities
 
     def extract_text_from_image(self, image_path: str) -> str:
@@ -58,14 +60,14 @@ class IntelExtractor:
             result = self.ocr.ocr(image_path, cls=True)
             if not result or not result[0]:
                 return ""
-            
+
             # Result structure: [[[[points], (text, conf)], ...]]
             full_text = []
             for line in result[0]:
                 text, conf = line[1]
-                if conf > 0.6: # Confidence threshold
+                if conf > 0.6:  # Confidence threshold
                     full_text.append(text)
-            
+
             return " ".join(full_text)
         except Exception as e:
             logger.error(f"OCR failed on {image_path}: {e}")

@@ -1,21 +1,27 @@
 import json
-from kafka import KafkaProducer
-from typing import Dict, Any, List
 import logging
 import uuid
+from typing import Any, Dict, List
+
+from kafka import KafkaProducer
+
 from panopticon.persistence.sqlite_manager import db_instance
 
 logger = logging.getLogger(__name__)
+
 
 class IngestionProducer:
     """
     Modified Producer:
     If running in simulation mode (no Kafka), writes directly to the SQLite PolyglotStore.
     """
+
     def __init__(self, bootstrap_servers: List[str], topic: str):
         self.topic = topic
-        self.use_kafka = False # Force simulation mode
-        logger.info(f"Initialized Ingestion for topic {topic} (Mode: {'Kafka' if self.use_kafka else 'SQLite Persistence'})")
+        self.use_kafka = False  # Force simulation mode
+        logger.info(
+            f"Initialized Ingestion for topic {topic} (Mode: {'Kafka' if self.use_kafka else 'SQLite Persistence'})"
+        )
 
     def send_record(self, record: Dict[str, Any]):
         if self.use_kafka:
@@ -28,10 +34,10 @@ class IngestionProducer:
                 doc_id=doc_id,
                 source_type=record.get("source_type", "unknown"),
                 timestamp=record.get("timestamp", 0.0),
-                data=record
+                data=record,
             )
             logger.info(f"Persisted record {doc_id} to Store")
-            
+
             # Trigger Real-time Graph Extraction (Simulating a Consumer)
             self._extract_entities(doc_id, record)
 
@@ -41,14 +47,16 @@ class IngestionProducer:
         """
         raw = record.get("raw_data", {})
         source_type = record.get("source_type")
-        
+
         if source_type == "surface_web":
             # Extract Person
             username = raw.get("username")
             if username:
                 uid = f"user:{username}"
-                db_instance.add_node(uid, "Identity", {"username": username, "source": "social"})
-                
+                db_instance.add_node(
+                    uid, "Identity", {"username": username, "source": "social"}
+                )
+
                 # Extract Name
                 name = raw.get("name")
                 if name:
@@ -61,13 +69,15 @@ class IngestionProducer:
             if email:
                 uid = f"email:{email}"
                 db_instance.add_node(uid, "Email", {"val": email})
-                
+
                 # Link IP
                 ip = raw.get("ip_address")
                 if ip:
                     ip_uid = f"ip:{ip}"
                     db_instance.add_node(ip_uid, "IPAddress", {"val": ip})
-                    db_instance.add_edge(uid, ip_uid, "OBSERVED_AT", {"dataset": record.get("dataset")})
+                    db_instance.add_edge(
+                        uid, ip_uid, "OBSERVED_AT", {"dataset": record.get("dataset")}
+                    )
 
                 # Link Hash
                 p_hash = raw.get("password_hash")

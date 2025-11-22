@@ -1,8 +1,10 @@
-import requests
 import logging
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
+import requests
 
 logger = logging.getLogger(__name__)
+
 
 class ActiveScanner:
     def __init__(self):
@@ -11,7 +13,7 @@ class ActiveScanner:
             "Twitter": "https://twitter.com/{}",
             "GitHub": "https://github.com/{}",
             "Instagram": "https://instagram.com/{}",
-            "Reddit": "https://www.reddit.com/user/{}"
+            "Reddit": "https://www.reddit.com/user/{}",
         }
 
     def check_username(self, username: str) -> List[Dict[str, str]]:
@@ -20,7 +22,7 @@ class ActiveScanner:
         """
         results = []
         logger.info(f"Starting username scan for '{username}'...")
-        
+
         for site, url_template in self.sites.items():
             url = url_template.format(username)
             try:
@@ -34,7 +36,7 @@ class ActiveScanner:
                     pass
             except Exception as e:
                 logger.warning(f"Error checking {site}: {e}")
-        
+
         return results
 
     def hlr_lookup(self, phone_number: str) -> Dict[str, Any]:
@@ -49,5 +51,5 @@ class ActiveScanner:
             "status": "active",
             "carrier": "Verizon Wireless",
             "country_code": "US",
-            "roaming": False
+            "roaming": False,
         }
