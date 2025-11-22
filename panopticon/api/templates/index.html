@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panopticon Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-mono">
+
+    <div class="container mx-auto p-4">
+        <header class="mb-8 border-b border-slate-700 pb-4">
+            <h1 class="text-3xl font-bold text-emerald-500">PANOPTICON <span class="text-sm text-slate-500">v0.2.0</span></h1>
+            <p class="text-slate-400">Web-Scale Identity Resolution Platform</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- Stats Panel -->
+            <div class="bg-slate-800 p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-400">System Status</h2>
+                <div id="stats" class="space-y-2">
+                    <div class="flex justify-between"><span>Documents:</span> <span id="stat-docs" class="font-bold">0</span></div>
+                    <div class="flex justify-between"><span>Graph Nodes:</span> <span id="stat-nodes" class="font-bold">0</span></div>
+                    <div class="flex justify-between"><span>Graph Edges:</span> <span id="stat-edges" class="font-bold">0</span></div>
+                </div>
+                <button onclick="refreshStats()" class="mt-4 bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-sm w-full">Refresh Stats</button>
+            </div>
+
+            <!-- Search Panel -->
+            <div class="bg-slate-800 p-4 rounded shadow md:col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Intelligence Search</h2>
+                <div class="flex gap-2 mb-4">
+                    <input type="text" id="search-input" placeholder="Enter Email or Username..." class="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-emerald-500">
+                    <select id="search-type" class="bg-slate-700 border border-slate-600 rounded px-3 py-2">
+                        <option value="email">Email</option>
+                        <option value="username">Username</option>
+                    </select>
+                    <button onclick="performSearch()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Search</button>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div id="search-results" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre">
+                        // Document Matches
+                    </div>
+                    <div id="risk-analysis" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre text-red-300">
+                        // Risk Analysis
+                    </div>
+                </div>
+            </div>
+
+            <!-- Graph Viz -->
+            <div class="bg-slate-800 p-4 rounded shadow col-span-1 md:col-span-2 h-96">
+                <h2 class="text-xl font-semibold mb-2 text-emerald-400">Identity Graph</h2>
+                <div id="mynetwork" class="w-full h-full border border-slate-700 bg-slate-900"></div>
+            </div>
+
+             <!-- Geo Viz -->
+             <div class="bg-slate-800 p-4 rounded shadow col-span-1 h-96">
+                <h2 class="text-xl font-semibold mb-2 text-emerald-400">Geo Trace</h2>
+                <div id="map" class="w-full h-full border border-slate-700 bg-slate-900"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let map = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+        let markers = [];
+
+        async function refreshStats() {
+            const res = await fetch('/stats');
+            const data = await res.json();
+            document.getElementById('stat-docs').innerText = data.documents;
+            document.getElementById('stat-nodes').innerText = data.nodes;
+            document.getElementById('stat-edges').innerText = data.edges;
+        }
+
+        async function performSearch() {
+            const val = document.getElementById('search-input').value;
+            const type = document.getElementById('search-type').value;
+            
+            const payload = {};
+            payload[type] = val;
+
+            document.getElementById('search-results').innerText = "Searching...";
+            
+            // Clear map
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            const res = await fetch('/search/person', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            document.getElementById('search-results').innerText = JSON.stringify(data.matches, null, 2);
+            document.getElementById('risk-analysis').innerText = JSON.stringify(data.risk_analysis, null, 2);
+            
+            renderGraph(data.graph);
+            renderMap(data.geo_trace);
+        }
+
+        function renderMap(locations) {
+            if(!locations) return;
+            locations.forEach(loc => {
+                const marker = L.marker([loc.lat, loc.lon]).addTo(map);
+                marker.bindPopup(`<b>IP:</b> ${loc.ip}<br><b>Country:</b> ${loc.country}`);
+                markers.push(marker);
+            });
+        }
+
+        function renderGraph(graphData) {
+            if (!graphData || !graphData.nodes) return;
+
+            const nodes = [];
+            const edges = [];
+
+            for (const [uid, info] of Object.entries(graphData.nodes)) {
+                let color = '#10b981'; // Default emerald
+                if(info.type === 'IPAddress') color = '#f59e0b'; // Amber
+                if(info.type === 'PasswordHash') color = '#ef4444'; // Red
+                
+                nodes.push({id: uid, label: uid + "\n" + info.type, color: color});
+            }
+
+            for (const edge of graphData.edges) {
+                edges.push({from: edge.source, to: edge.target, label: edge.type});
+            }
+
+            const container = document.getElementById('mynetwork');
+            const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
+            const options = {
+                physics: { enabled: true },
+                nodes: { shape: 'dot', size: 15, font: { color: '#ffffff' } }
+            };
+            new vis.Network(container, data, options);
+        }
+
+        // Initial load
+        refreshStats();
+        setInterval(refreshStats, 5000);
+    </script>
+</body>
+</html>
