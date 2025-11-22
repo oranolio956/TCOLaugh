@@ -5,9 +5,25 @@ Simplified API for testing Render deployment
 import os
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 
 app = FastAPI(title="Panopticon API", description="Simplified version for deployment testing")
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://workspace-alpha-five.vercel.app",
+        "https://workspace-asdsas-projects-7b4d3f47.vercel.app",
+        "https://workspace-6b9cje1lb-asdsas-projects-7b4d3f47.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:8000"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Get API key from environment
 EXPECTED_API_KEY = os.environ.get("PANOPTICON_API_KEY", "dev-panopticon")
