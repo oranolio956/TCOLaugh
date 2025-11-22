@@ -1,31 +1,43 @@
 services:
   # --- Web Service (FastAPI) ---
-  - type: web
-    name: panopticon-api
-    env: python
-    plan: standard
-    buildCommand: |
-      pip install -r requirements.txt
-      python -m spacy download en_core_web_sm
-    startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 10000
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.9.0
-      - key: PANOPTICON_API_KEY
-        generateValue: true
-      - key: PANOPTICON_ENABLE_AI_BRIEFING
-        value: "false"
-      - key: PANOPTICON_MAX_UPLOAD_BYTES
-        value: "5242880"
-      - key: PANOPTICON_DB_PATH
-        value: /var/panopticon/data/panopticon.db
-      - key: ANTHROPIC_API_KEY
-        sync: false # Prompt user on deploy
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: panopticon-redis
-          property: connectionString
+    - type: web
+      name: panopticon-api
+      env: python
+      plan: standard
+      buildCommand: |
+        pip install -r requirements.txt
+        python -m spacy download en_core_web_sm
+      startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 10000
+      envVars:
+        - key: PYTHON_VERSION
+          value: 3.9.0
+        - key: PANOPTICON_API_KEY
+          generateValue: true
+        - key: PANOPTICON_ENABLE_AI_BRIEFING
+          value: "false"
+        - key: PANOPTICON_MAX_UPLOAD_BYTES
+          value: "5242880"
+        - key: PANOPTICON_DB_PATH
+          value: /var/panopticon/data/panopticon.db
+        - key: NEO4J_URI
+          value: bolt://panopticon-neo4j:7687
+        - key: NEO4J_USER
+          value: neo4j
+        - key: NEO4J_PASSWORD
+          sync: false
+        - key: MILVUS_HOST
+          value: panopticon-milvus
+        - key: MILVUS_PORT
+          value: "19530"
+        - key: PANOPTICON_USE_KAFKA
+          value: "false"
+        - key: ANTHROPIC_API_KEY
+          sync: false # Prompt user on deploy
+        - key: REDIS_URL
+          fromService:
+            type: redis
+            name: panopticon-redis
+            property: connectionString
     disk:
       name: panopticon-data
       mountPath: /var/panopticon

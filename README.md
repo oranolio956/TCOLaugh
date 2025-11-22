@@ -41,8 +41,9 @@ export PANOPTICON_API_KEY=dev-panopticon  # or any secret you prefer
 
 ### Testing
 ```bash
-pytest tests/
+PYTHONPATH=$(pwd) pytest tests/
 ```
+This runs the FastAPI security suite plus the ingestion/recon coverage (`tests/test_ingestion_and_recon.py`).
 
 ### Scenario Testing
 Run the "Cipher Network" simulation (ensures ingestion->graph pipeline is wired):
@@ -66,6 +67,8 @@ python3 panopticon/scenario_test.py
 | `PANOPTICON_USE_KAFKA` | `false` | When `true`, ingestion pushes to Kafka instead of SQLite fallback |
 | `PANOPTICON_RECON_TIMEOUT` | `6` | Timeout (seconds) for concurrent username reconnaissance calls |
 | `PANOPTICON_AI_GRAPH_LIMIT` | `40` | Max number of nodes/edges summarized before sending to the LLM |
+| `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | `bolt://localhost:7687`, `neo4j`, `panopticon_secret` | Point workers at a managed Neo4j instance |
+| `MILVUS_HOST` / `MILVUS_PORT` | `localhost`, `19530` | Milvus vector DB endpoint; falls back to SQLite vectors if unset |
 
 ## Security Hardening Highlights
 * API key enforcement on `/stats`, `/search/*`, `/recon/*`
@@ -76,3 +79,4 @@ python3 panopticon/scenario_test.py
 * Vector similarity search is cached in-memory for low latency and can fall back to Milvus if available
 * Username reconnaissance runs concurrently over HTTP/2 via `httpx` instead of blocking the FastAPI event loop
 * Kafka ingestion is feature-flagged—enable it in production to stream raw records while retaining SQLite fallback
+* External graph/vector services (Neo4j, Milvus) are fully controlled via environment variables, making managed deployments straightforward

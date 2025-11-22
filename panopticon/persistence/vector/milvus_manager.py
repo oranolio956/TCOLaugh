@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Any, Dict, List
 
 import numpy as np
@@ -27,9 +28,12 @@ class MilvusManager:
             logger.warning("pymilvus not installed. Milvus features disabled.")
             self.collection = None
             return
+
+        resolved_host = os.environ.get("MILVUS_HOST", host)
+        resolved_port = os.environ.get("MILVUS_PORT", port)
         try:
-            connections.connect("default", host=host, port=port)
-            logger.info(f"Connected to Milvus at {host}:{port}")
+            connections.connect("default", host=resolved_host, port=resolved_port)
+            logger.info(f"Connected to Milvus at {resolved_host}:{resolved_port}")
             self._init_collection()
         except Exception as e:
             logger.error(f"Failed to connect to Milvus: {e}")

@@ -1,6 +1,8 @@
-from neo4j import GraphDatabase
 import logging
+import os
 from typing import Dict, Any, List
+
+from neo4j import GraphDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +14,16 @@ class Neo4jManager:
         user: str = "neo4j",
         password: str = "panopticon_secret",
     ):
+        resolved_uri = os.environ.get("NEO4J_URI", uri)
+        resolved_user = os.environ.get("NEO4J_USER", user)
+        resolved_password = os.environ.get("NEO4J_PASSWORD", password)
+
         self.driver = None
         try:
-            self.driver = GraphDatabase.driver(uri, auth=(user, password))
-            logger.info(f"Connected to Neo4j at {uri}")
+            self.driver = GraphDatabase.driver(
+                resolved_uri, auth=(resolved_user, resolved_password)
+            )
+            logger.info(f"Connected to Neo4j at {resolved_uri}")
         except Exception as e:
             logger.error(f"Failed to connect to Neo4j: {e}")
 
