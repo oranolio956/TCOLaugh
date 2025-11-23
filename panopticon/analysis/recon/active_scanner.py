@@ -107,7 +107,8 @@ class ActiveScanner:
             elif isinstance(resp, Exception):
                 logger.warning(f"Exception during platform check: {resp}")
         
-        logger.info(f"Found username on {sum(1 for r in results if r.get('found', False))} platform(s)")
+        found_count = sum(1 for r in results if r.get('status') == 'found' or r.get('found', False))
+        logger.info(f"Found username on {found_count} platform(s)")
         return results
 
     async def _check_platform(
