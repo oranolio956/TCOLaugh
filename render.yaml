@@ -3,13 +3,15 @@ services:
     name: panopticon-api-847835
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm || true
     startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: "3.9.18"
       - key: PANOPTICON_API_KEY
         value: REPLACE_WITH_RENDER_SECRET
+      - key: PANOPTICON_CORS_ORIGINS
+        value: "https://tco-laugh.vercel.app,https://tcolaugh.vercel.app,https://panopticon-dashboard.vercel.app"
       - key: PANOPTICON_ENABLE_AI_BRIEFING
         value: "false"
       - key: PANOPTICON_MAX_UPLOAD_BYTES
