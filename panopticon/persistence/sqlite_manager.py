@@ -32,7 +32,6 @@ class PolyglotStore:
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or DEFAULT_DB_PATH
         
-        # ... (existing init code) ...
         # Ensure the directory exists
         db_dir = os.path.dirname(os.path.abspath(self.db_path))
         if db_dir and db_dir != '.' and not os.path.exists(db_dir):
@@ -51,7 +50,9 @@ class PolyglotStore:
         self._vector_matrix: Optional[np.ndarray] = None
         self._vector_ids: List[str] = []
         self._vector_metadata: List[Dict[str, Any]] = []
-        self.setup_schema()
+        
+        # Initialize Schema
+        self._init_sqlite_schema()
 
         # Neo4j Integration
         self.neo4j = None
@@ -61,9 +62,161 @@ class PolyglotStore:
                 self.neo4j = Neo4jManager()
             except Exception as e:
                 logger.error(f"Neo4j Connection Failed: {e}")
-
-    # ... (existing methods) ...
     
+    def _init_sqlite_schema(self):
+        self.setup_schema()
+
+    @contextmanager
+    def get_connection(self):
+        conn = sqlite3.connect(
+            self.db_path, check_same_thread=False, detect_types=sqlite3.PARSE_DECLTYPES
+        )
+        conn.execute("PRAGMA foreign_keys=ON;")
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    def setup_schema(self):
+        with self.get_connection() as conn:
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS documents (
+                id TEXT PRIMARY KEY,
+                source_type TEXT,
+                timestamp REAL,
+                data JSON
+            )
+            """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_documents_source ON documents (source_type)"
+            )
+
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS document_index (
+                doc_id TEXT,
+                key TEXT,
+                value TEXT,
+                PRIMARY KEY (doc_id, key, value),
+                FOREIGN KEY (doc_id) REFERENCES documents(id) ON DELETE CASCADE
+            )
+            """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_document_lookup ON document_index (key, value)"
+            )
+
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS nodes (
+                uid TEXT PRIMARY KEY,
+                type TEXT,
+                properties JSON
+            )
+            """
+            )
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes (type)")
+
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS edges (
+                source_uid TEXT,
+                target_uid TEXT,
+                type TEXT,
+                properties JSON,
+                PRIMARY KEY (source_uid, target_uid, type)
+            )
+            """
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_edges_source ON edges (source_uid)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_edges_target ON edges (target_uid)"
+            )
+
+            cur.execute(
+                """
+            CREATE TABLE IF NOT EXISTS vectors (
+                id TEXT PRIMARY KEY,
+                vector BLOB,
+                metadata JSON
+            )
+            """
+            )
+
+            conn.commit()
+
+    # --- Document Operations ---
+    def add_document(
+        self, doc_id: str, source_type: str, timestamp: float, data: Dict[str, Any]
+    ):
+        with self._lock:
+            with self.get_connection() as conn:
+                try:
+                    conn.execute(
+                        "INSERT OR REPLACE INTO documents (id, source_type, timestamp, data) VALUES (?, ?, ?, ?)",
+                        (doc_id, source_type, timestamp, json.dumps(data)),
+                    )
+                    self._index_document(conn, doc_id, data)
+                    conn.commit()
+                except Exception as exc:
+                    logger.error("Error adding document %s: %s", doc_id, exc)
+                finally:
+                    self._purge_if_needed(conn)
+
+    def search_documents(
+        self, query_key: str, query_value: str, allow_full_scan: bool = False
+    ) -> List[Dict[str, Any]]:
+        normalized_key = query_key.lower()
+        normalized_value = str(query_value).strip().lower()
+
+        with self.get_connection() as conn:
+            cur = conn.cursor()
+            if normalized_key in INDEXED_FIELDS:
+                cur.execute(
+                    """
+                SELECT d.data
+                FROM document_index idx
+                JOIN documents d ON d.id = idx.doc_id
+                WHERE idx.key = ? AND idx.value = ?
+                """,
+                    (normalized_key, normalized_value),
+                )
+                rows = cur.fetchall()
+                if rows:
+                    return [json.loads(payload) for (payload,) in rows]
+
+            if not allow_full_scan:
+                raise ValueError(
+                    f"Query key '{query_key}' is not indexed. Enable allow_full_scan=True to force a scan."
+                )
+
+            cur.execute("SELECT data FROM documents")
+            return [
+                doc
+                for (raw,) in cur.fetchall()
+                if self._recursive_search((doc := json.loads(raw)), normalized_key, normalized_value)
+            ]
+
+    def _recursive_search(self, data: Any, key: str, value: str) -> bool:
+        if isinstance(data, dict):
+            for k, v in data.items():
+                if k == key and str(v).lower() == value:
+                    return True
+                if self._recursive_search(v, key, value):
+                    return True
+        elif isinstance(data, list):
+            return any(self._recursive_search(item, key, value) for item in data)
+        return False
+
     # --- Graph Operations ---
     def add_node(self, uid: str, node_type: str, properties: Dict[str, Any]):
         # 1. Neo4j
@@ -117,12 +270,11 @@ class PolyglotStore:
 
         with self.get_connection() as conn:
             while queue:
-
                 current_uid, current_depth = queue.pop(0)
                 if current_uid in visited or current_depth > depth:
                     continue
                 visited.add(current_uid)
-
+                
                 cur = conn.cursor()
                 cur.execute(
                     "SELECT type, properties FROM nodes WHERE uid=?", (current_uid,)
@@ -165,7 +317,7 @@ class PolyglotStore:
                     )
                     if source not in visited:
                         queue.append((source, current_depth + 1))
-
+        
         return {"nodes": nodes, "edges": edges}
 
     # --- Vector Operations ---

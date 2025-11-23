@@ -47,13 +47,13 @@ def _get_visual_resources():
 
             from panopticon.analysis.intel_extractor import IntelExtractor
             from panopticon.analysis.visual.face_engine import FaceEngine
-            from panopticon.persistence.vector.milvus_manager import MilvusManager
+            from panopticon.persistence.vector.router import vector_router
 
             _visual_bundle = {
                 "np": np,
                 "extractor": IntelExtractor(),
                 "face_engine": FaceEngine(),
-                "milvus": MilvusManager(),
+                "router": vector_router,
             }
     return _visual_bundle
 
@@ -143,7 +143,7 @@ def process_visual_task(image_path: str):
     np = resources["np"]
     extractor = resources["extractor"]
     face_engine = resources["face_engine"]
-    milvus = resources["milvus"]
+    router = resources["router"]
 
     logger.info(f"Processing visual task: {image_path}")
 
@@ -154,7 +154,7 @@ def process_visual_task(image_path: str):
         results = face_engine.process_image(image_path)
         for res in results:
             vector = np.array(res["embedding"], dtype=np.float32)
-            milvus.add_vector(vector, f"img_{image_path}", {"ocr_text": text})
+            router.add_vector(vector, f"img_{image_path}", {"ocr_text": text})
 
     except Exception as e:
         logger.error(f"Visual task failed: {e}")
