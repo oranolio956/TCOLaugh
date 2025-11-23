@@ -1,18 +1,35 @@
-FROM golang:1.24.4-bookworm AS builder
+# Base Image
+FROM python:3.9-slim
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y mingw-w64 make libssl-dev qt6-base-dev qt6-websockets-dev sudo libcap2-bin build-essential checkinstall zlib1g-dev libssl-dev qt6-declarative-dev qt6-scxml-dev
-# client requires cmake version 3.28+
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.31.5/cmake-3.31.5.tar.gz && tar -zxvf cmake-3.31.5.tar.gz && cd cmake-3.31.5 && bash ./bootstrap && make && make install
+# Environment Variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=off \
+    PIP_DISABLE_PIP_VERSION_CHECK=on \
+    PIP_DEFAULT_TIMEOUT=100 \
+    POETRY_VERSION=1.4.2
 
+# System Dependencies (OpenCV, etc.)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        libgl1-mesa-glx \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Work Directory
 WORKDIR /app
 
+# Python Dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+RUN python -m spacy download en_core_web_sm
+
+# Copy Code
 COPY . .
 
-RUN make server
-RUN make extenders
-RUN make client
+# Expose Port
+EXPOSE 8000
 
-
-FROM scratch AS exporter
-
-COPY --from=builder /app/dist .
+# Start Command (Default to API, can be overridden for Worker)
+CMD ["uvicorn", "panopticon.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

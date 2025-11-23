@@ -1,13 +1,38 @@
-cmake-build-debug/
-objects_http/
-objects_smb/
-objects_tcp/
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
 .idea/
-.qt/
-AdaptixClient/CMakeFiles/
-AdaptixClient/AdaptixClient_autogen/
-AdaptixClient/CMakeCache.txt
-AdaptixClient/*.log
-AdaptixClient/cmake_*
-AdaptixClient/Makefile
-AdaptixServer/build_error.log
+
+# Logs & runtime artifacts
+*.log
+*.sqlite3
+*.db
+panopticon.db
+api.log
+crawler.log
+simulation.log
+
+# Python cache
+.mypy_cache/
+.pytest_cache/
+
+# Data & uploads
+uploads/
+/tmp/
+data/
+
+# System
+.DS_Store
+Thumbs.db
+.vercel

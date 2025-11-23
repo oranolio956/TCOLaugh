@@ -1,0 +1,18 @@
+{
+  "timestamp": "",
+  "credentials": {
+    "PANOPTICON_API_KEY": "REPLACE_WITH_GENERATED_KEY",
+    "NEO4J_PASSWORD": "REPLACE_WITH_GENERATED_PASSWORD"
+  },
+  "services": {
+    "api": "",
+    "worker": "",
+    "crawler": ""
+  },
+  "api_endpoint": "",
+  "service_ids": {
+    "Web API": "",
+    "Worker": "",
+    "Crawler": ""
+  }
+}

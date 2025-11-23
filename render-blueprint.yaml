@@ -1,7 +1,7 @@
 services:
   - type: web
-    name: panopticon-api-847835
-    runtime: python
+    name: panopticon-api-847691
+    env: python
     plan: free
     buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
     startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port $PORT
@@ -10,69 +10,59 @@ services:
         value: "3.9"
       - key: PANOPTICON_API_KEY
         value: REPLACE_WITH_RENDER_SECRET
-      - key: PANOPTICON_ENABLE_AI_BRIEFING
-        value: "false"
-      - key: PANOPTICON_MAX_UPLOAD_BYTES
-        value: "5242880"
-      - key: PANOPTICON_DB_PATH
-        value: /var/data/panopticon.db
       - key: NEO4J_URI
         value: bolt://localhost:7687
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
         value: REPLACE_WITH_RENDER_SECRET
+      - key: REDIS_URL
+        value: redis://localhost:6379
+      - key: PANOPTICON_DB_PATH
+        value: /data/panopticon.db
+      - key: PANOPTICON_ENABLE_AI_BRIEFING
+        value: "false"
+      - key: PANOPTICON_MAX_UPLOAD_BYTES
+        value: "5242880"
       - key: MILVUS_HOST
         value: localhost
       - key: MILVUS_PORT
         value: "19530"
       - key: PANOPTICON_USE_KAFKA
         value: "false"
-      - key: REDIS_URL
-        value: redis://localhost:6379
-      - key: PANOPTICON_DOCUMENT_TTL_SECONDS
-        value: "0"
-      - key: PANOPTICON_INDEX_FIELDS
-        value: email,username,phone,ip_address
-      - key: PANOPTICON_RECON_TIMEOUT
-        value: "6"
-      - key: PANOPTICON_AI_GRAPH_LIMIT
-        value: "40"
     disk:
-      name: data
-      mountPath: /var/data
+      name: panopticon-data
+      mountPath: /data
       sizeGB: 1
 
   - type: worker
-    name: panopticon-worker-847835
-    runtime: python
+    name: panopticon-worker-847691
+    env: python
     plan: free
     buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
     startCommand: celery -A panopticon.worker worker --loglevel=info
     envVars:
       - key: PYTHON_VERSION
         value: "3.9"
-      - key: REDIS_URL
-        value: redis://localhost:6379
+      - key: PANOPTICON_API_KEY
+        value: REPLACE_WITH_RENDER_SECRET
       - key: NEO4J_URI
         value: bolt://localhost:7687
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
         value: REPLACE_WITH_RENDER_SECRET
-      - key: MILVUS_HOST
-        value: localhost
-      - key: MILVUS_PORT
-        value: "19530"
+      - key: REDIS_URL
+        value: redis://localhost:6379
       - key: PANOPTICON_DB_PATH
-        value: /var/data/panopticon.db
+        value: /data/panopticon.db
 
   - type: worker
-    name: panopticon-crawler-847835
-    runtime: python
+    name: panopticon-crawler-847691
+    env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python3 panopticon/ingestion/crawlers/mock_crawler.py --continuous --delay 30
+    startCommand: python3 -m panopticon.ingestion.crawlers.mock_crawler --continuous --delay 30
     envVars:
       - key: PYTHON_VERSION
         value: "3.9"

@@ -1,235 +1,107 @@
-# Render CLI
+# Panopticon: Web-Scale Identity Resolution Platform
 
-## Installation
+## Overview
+Panopticon is a Multi-Modal Identity Resolution (MMIR) system designed to synthesize digital footprints into coherent "Golden Records". It fuses visual data (facial recognition), textual intelligence (OSINT, breach data), and behavioral signals to create a comprehensive identity graph.
 
-- [Homebrew](https://render.com/docs/cli#homebrew-macos-linux)
-- [Direct Download](https://render.com/docs/cli#direct-download)
+> **New:** The API now enforces API-key authentication everywhere except the public landing page. The web dashboard (served from Vercel or any static host) no longer ships a baked-in secret—you must supply the key via the Connection panel before making requests.
 
-## Documentation
+## Architecture
 
-## ⚠️ **LEGAL WARNING**
+### 1. Ingestion Layer
+*   **Surface Web**: Distributed crawlers for social media and public registries.
+*   **Deep Web**: Ingestion of breach data, stealer logs, and dark web feeds.
+*   **Persistence**: Simulated Polyglot Store (SQLite) handling Documents, Graph (Nodes/Edges), and Vectors.
 
-**This tool is designed for AUTHORIZED security testing and red team operations ONLY.**
+### 2. Enrichment & Analysis
+*   **Visual Intelligence**: Face detection (MediaPipe) and embedding (InsightFace/ArcFace - Mocked).
+*   **Breach Analytics**: Password hygiene grading and hash analysis.
+*   **Geospatial**: IP-to-Location mapping.
 
-Unauthorized use is strictly prohibited and may violate local and international laws. Use at your own risk.
+### 3. Interface
+*   **API**: FastAPI-based REST interface.
+*   **Dashboard**: Real-time stats, Identity Graph visualization (Vis.js), and Geo-tracing (Leaflet).
 
----
-
-## 🚀 Quick Start
-
-### 1. Start the Server
-```bash
-cd dist
-./adaptixserver -profile profile.json
-```
-
-Server starts on: `https://0.0.0.0:4321/tcolaugh`
-
-### 2. Launch the Client
-```bash
-cd dist
-./AdaptixClient
-```
-
-### 3. Connect
-- **Server URL:** `https://YOUR_IP:10000/tcolaugh`
-- **Password:** `TCOLaugh2025!Secure`
-
----
-
-## 📦 What's Included
-
-### ✅ Server (29MB)
-- AdaptixServer binary
-- Full database support
-- JWT authentication
-- Multi-operator support
-
-### ✅ Client (17MB)
-- Cross-platform Qt6 GUI
-- Real-time agent monitoring
-- Interactive file/process browsers
-- Terminal access
-- Scripting engine
-
-### ✅ Extenders
-- **Listeners:** HTTP/HTTPS, TCP, SMB, Gopher
-- **Agents:** Beacon (Windows), Gopher (Cross-platform)
-- **BOF Support:** Beacon Object Files
-- **Tunneling:** SOCKS4/5, Port forwarding
-
----
-
-## 🌟 Features
-
-- ✅ Server/Client architecture for multiplayer
-- ✅ Fully encrypted communications
-- ✅ Plugin-based extenders
-- ✅ Task and job storage
-- ✅ Credentials manager
-- ✅ Targets manager
-- ✅ Remote terminal
-- ✅ File/process browsers
-- ✅ SOCKS proxies
-- ✅ Port forwarding
-- ✅ Agent linking
-- ✅ Health checking
-- ✅ Kill date & working time control
-- ✅ Windows/Linux/macOS support
-
----
-
-## 📚 Documentation
-
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Complete deployment guide
-- **[CREDENTIALS.md](CREDENTIALS.md)** - All credentials and access details
-- **[Official Docs](https://adaptix-framework.gitbook.io/adaptix-framework)** - Full AdaptixC2 documentation
-
----
-
-## ☁️ Cloud Deployment
-
-### Render (C2 Server)
-```bash
-# Deploy via Render Dashboard
-1. Go to render.com
-2. New Web Service
-3. Connect repo: oranolio956/TCOLaugh
-4. Use Dockerfile.render
-5. Deploy!
-```
-
-### Netlify (Phishing/Payload)
-```bash
-cd netlify-site
-netlify deploy --prod
-```
-
----
-
-## 🔐 Default Credentials
-
-**⚠️ CHANGE THESE BEFORE PRODUCTION USE**
-
-### Server Access
-- **Endpoint:** `/tcolaugh`
-- **Port:** `4321`
-- **Password:** `TCOLaugh2025!Secure`
-
-### Operators
-- **Admin:** `admin` / `Admin@TCO2025!`
-- **Operator:** `operator` / `Operator@TCO2025!`
-
----
-
-## 🛠️ Build from Source
-
+## Setup & Usage
 ### Prerequisites
-- Go 1.24.4
-- MinGW-w64
-- Qt6
-- CMake 3.28+
+* Python **3.9+**
+* A valid **`PANOPTICON_API_KEY`** (set in your shell or Render dashboard)
+* Optional: Docker + Render CLI for deployment
 
-### Build All
+### Local Quick Start
 ```bash
-make all
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+export PANOPTICON_API_KEY=dev-panopticon        # required: use a real secret in shared envs
+export PANOPTICON_API_BASE_URL=http://localhost:8000
+./start_panopticon.sh
 ```
+* API: `http://localhost:8000`
+* Docs: `http://localhost:8000/docs`
+* Dashboard: served by the API root (or deploy `panopticon/api/templates/index.html` to Vercel for static hosting).
 
-### Build Individual Components
+### Testing
 ```bash
-make server      # Build server only
-make client      # Build client only
-make extenders   # Build extenders only
+PYTHONPATH=$(pwd) pytest tests/
+```
+This runs the FastAPI security suite plus the ingestion/recon coverage (`tests/test_ingestion_and_recon.py`).
+
+### Scenario Testing
+Run the "Cipher Network" simulation (ensures ingestion->graph pipeline is wired):
+```bash
+python3 panopticon/scenario_test.py
 ```
 
----
+## Deployment (Vercel + Render)
+* **Render (API/Workers):** Use `render.yaml`. Render will build `requirements.txt`, fetch the spaCy model, and generate a unique `PANOPTICON_API_KEY`. Set `PANOPTICON_ENABLE_AI_BRIEFING=true` only if you supply a valid `ANTHROPIC_API_KEY`.
+* **Vercel (Dashboard):** Deploy `panopticon/api/templates/index.html` as a static site (see `vercel.json`). At runtime, enter the Render base URL and API key via the Connection Settings card. Nothing sensitive is baked into the frontend bundle.
+* Need a turnkey walkthrough? See `DEPLOYMENT.md` for Render CLI commands, managed Neo4j/Milvus/Kafka notes, and operational checklists.
 
-## 📊 Architecture
+## Configuration Flags
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PANOPTICON_API_KEY` | _none_ (required) | Required header (`X-API-Key`) for every non-static route |
+| `PANOPTICON_API_BASE_URL` | `http://localhost:8000` | Target URL for internal services (crawler) when hitting the API |
+| `PANOPTICON_ENABLE_AI_BRIEFING` | `false` | Opt-in switch before any graph data is sent to Anthropic |
+| `PANOPTICON_MAX_UPLOAD_BYTES` | `5MB` | Upload limit for `/search/face` |
+| `PANOPTICON_MAX_SEARCH_RESULTS` | `100` | Upper bound for `/search/person` document matches |
+| `PANOPTICON_RATE_LIMIT_WINDOW` | `60` | Rate-limit window (seconds) enforced by the API middleware |
+| `PANOPTICON_RATE_LIMIT_MAX` | `60` | Max authenticated requests per IP per window |
+| `PANOPTICON_DB_PATH` | `./panopticon.db` | Location of the SQLite polyglot store (point to Render disk) |
+| `PANOPTICON_DOCUMENT_TTL_SECONDS` | `0` (disabled) | Automatically purge non-audit documents older than the TTL |
+| `PANOPTICON_INDEX_FIELDS` | `email,username,phone,ip_address` | CSV of document keys that should be indexed for fast lookup |
+| `PANOPTICON_USE_KAFKA` | `false` | When `true`, ingestion pushes to Kafka instead of SQLite fallback |
+| `PANOPTICON_RECON_TIMEOUT` | `6` | Timeout (seconds) for concurrent username reconnaissance calls |
+| `PANOPTICON_AI_GRAPH_LIMIT` | `40` | Max number of nodes/edges summarized before sending to the LLM |
+| `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | `bolt://localhost:7687`, `neo4j`, `panopticon_secret` | Point workers at a managed Neo4j instance |
+| `MILVUS_HOST` / `MILVUS_PORT` | `localhost`, `19530` | Milvus vector DB endpoint; falls back to SQLite vectors if unset |
 
-```
-┌─────────────────────────────────────────┐
-│         Cloud Server (Render)           │
-│    AdaptixServer + Extenders            │
-└─────────────────────────────────────────┘
-              ↑
-              │ (Encrypted WebSocket)
-              ↓
-┌─────────────────────────────────────────┐
-│      Local Machine (Client)             │
-│         AdaptixClient GUI               │
-└─────────────────────────────────────────┘
-              ↑
-              │ (Agent Callbacks)
-              ↓
-┌─────────────────────────────────────────┐
-│       Target Systems (Agents)           │
-│    Beacon / Gopher Agents               │
-└─────────────────────────────────────────┘
-```
+> Optional: The probabilistic identity linker depends on Splink. Install it with `pip install splink` before invoking `panopticon.analysis.identity.IdentityLinker`.
 
----
+### Secure Ingestion Channel
+* **HTTP ingest endpoint**: `POST /ingest/record` (requires `X-API-Key`). Use this when crawlers or workers run outside the same disk as the API.
+* **Recommended env vars for crawlers/workers**:
+  * `PANOPTICON_API_BASE_URL` – base Render/Vercel URL for the API.
+  * `PANOPTICON_API_KEY` – the same key the API expects; supply via Render secrets or your secret manager.
+  * `PANOPTICON_KAFKA_TOPIC` and `PANOPTICON_USE_KAFKA` – optional; enable when a Kafka broker is available.
+* **Fallback**: if HTTP ingestion fails, the crawler automatically falls back to the local Polyglot store via the embedded `IngestionProducer`.
 
-## 🎯 Use Cases
+### Rate Limiting & Quotas
+The API middleware enforces per-IP throttling using `PANOPTICON_RATE_LIMIT_MAX` requests per `PANOPTICON_RATE_LIMIT_WINDOW` seconds. Tune these values per deployment tier, and expose them to operators so they can temporarily raise limits during bulk ingest/testing.
 
-### Red Team Operations
-- Penetration testing
-- Social engineering
-- Physical security testing
-- Wireless testing
+### Secret Management Guidance
+* Never check API keys or database passwords into git. Render blueprints now use placeholders; populate real values via Render’s dashboard or Terraform.
+* Rotate all keys if you previously used the hard-coded defaults (`dev-panopticon`, etc.).
+* When running `pytest`/CI, inject `PANOPTICON_API_KEY` (and any other required secrets) through your CI secret store rather than exporting inside tests.
 
-### Threat Hunting
-- Advanced persistent threats
-- Malware analysis
-- Incident response
-- Forensic analysis
-
-### Security Training
-- CTF competitions
-- Security awareness
-- Blue team training
-- Red team training
-
----
-
-## 🤝 Credits
-
-- **Original Framework:** [AdaptixC2](https://github.com/Adaptix-Framework/AdaptixC2) by Adaptix Framework
-- **TCOLaugh Edition:** Custom build with deployment automation
-- **Contributors:** See [AdaptixC2 Contributors](https://github.com/Adaptix-Framework/AdaptixC2/graphs/contributors)
-
----
-
-## 📄 License
-
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🔗 Links
-
-- **GitHub:** [https://github.com/oranolio956/TCOLaugh](https://github.com/oranolio956/TCOLaugh)
-- **Original Repo:** [https://github.com/Adaptix-Framework/AdaptixC2](https://github.com/Adaptix-Framework/AdaptixC2)
-- **Documentation:** [https://adaptix-framework.gitbook.io](https://adaptix-framework.gitbook.io/adaptix-framework)
-
----
-
-## ⚖️ Final Warning
-
-**TCOLaugh is a powerful tool that can cause significant damage if misused.**
-
-- ✅ Always obtain written authorization before testing
-- ✅ Follow ethical hacking principles
-- ✅ Comply with local and international laws
-- ✅ Report vulnerabilities responsibly
-
-**The developers are not responsible for any misuse of this tool.**
-
----
-
-<div align="center">
-
-**🕷️ TCOLaugh - Where Digital Shadows Come to Life 🕷️**
-
-*"For authorized security testing only"*
-
-</div>
+## Security Hardening Highlights
+* API key enforcement on `/stats`, `/search/*`, `/recon/*`
+* Frontend no longer persists secrets—only the API base URL is cached in `localStorage`
+* Audit logs capture metadata only (no payload dumps)
+* Face-upload endpoint sanitizes filenames, enforces size limits, and scrubs temp files
+* Document store now indexes sensitive identifiers, purges stale data, and keeps WAL mode enabled for crash safety
+* Vector similarity search is cached in-memory for low latency and can fall back to Milvus if available
+* Username reconnaissance runs concurrently over HTTP/2 via `httpx` instead of blocking the FastAPI event loop
+* HTTP ingestion endpoint plus crawler fallback ensures data arrives even when Kafka/SQLite live in separate environments
+* Kafka ingestion is feature-flagged—enable it in production to stream raw records while retaining SQLite fallback
+* External graph/vector services (Neo4j, Milvus) are fully controlled via environment variables, making managed deployments straightforward

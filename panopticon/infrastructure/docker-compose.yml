@@ -1,0 +1,128 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7.0.5
+    container_name: panopticon_redis
+    command: redis-server --save 60 1 --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  neo4j:
+    image: neo4j:5.22.0
+    container_name: panopticon_neo4j
+    environment:
+      - NEO4J_AUTH=neo4j/panopticon_secret
+      - NEO4J_PLUGINS=["apoc"]
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+  milvus:
+    image: milvusdb/milvus-standalone:v2.4.2
+    container_name: panopticon_milvus
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    environment:
+      - ETCD_USE_EMBED=true
+      - MINIO_USE_EMBED=true
+    volumes:
+      - milvus_data:/var/lib/milvus
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    container_name: panopticon_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    container_name: panopticon_kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9093:9093"
+
+  api:
+    build: ../..
+    container_name: panopticon_api
+    command: uvicorn panopticon.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      PANOPTICON_API_KEY: dev-panopticon
+      PANOPTICON_DB_PATH: /data/panopticon.db
+      PANOPTICON_ENABLE_AI_BRIEFING: "false"
+      PANOPTICON_MAX_UPLOAD_BYTES: "5242880"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: panopticon_secret
+      MILVUS_HOST: milvus
+      MILVUS_PORT: "19530"
+      PANOPTICON_USE_KAFKA: "true"
+      PANOPTICON_RECON_TIMEOUT: "6"
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../..:/app
+      - api_data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+      - neo4j
+      - milvus
+      - kafka
+
+  worker:
+    build: ../..
+    container_name: panopticon_worker
+    command: celery -A panopticon.worker worker --loglevel=info
+    environment:
+      PANOPTICON_API_KEY: dev-panopticon
+      PANOPTICON_DB_PATH: /data/panopticon.db
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: panopticon_secret
+      MILVUS_HOST: milvus
+      MILVUS_PORT: "19530"
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ../..:/app
+      - api_data:/data
+    depends_on:
+      - redis
+      - neo4j
+      - milvus
+
+  crawler:
+    build: ../..
+    container_name: panopticon_crawler
+    command: python3 panopticon/ingestion/crawlers/mock_crawler.py --continuous --delay 3.0
+    environment:
+      PANOPTICON_USE_KAFKA: "true"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    volumes:
+      - ../..:/app
+    depends_on:
+      - kafka
+
+volumes:
+  redis_data:
+  neo4j_data:
+  neo4j_logs:
+  milvus_data:
+  api_data:

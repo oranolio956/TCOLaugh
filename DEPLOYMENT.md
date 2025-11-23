@@ -1,156 +1,103 @@
-# TCOLaugh C2 Deployment Guide
+# Deployment Guide
 
-## 🚀 Quick Start
+This repository ships two deployment targets:
 
-### Local Testing
+* **Render** – hosts the FastAPI web service, Celery worker, crawler, Redis, and persistent disk.
+* **Vercel (or any static host)** – serves the dashboard UI from `panopticon/api/templates/index.html`.
+
+Follow the steps below to reproduce the full environment using your own credentials.
+
+---
+
+## 1. Prerequisites
+
+* Python 3.9+ with `pipx` or `pip`
+* Docker Compose v2 (for local parity testing)
+* Render account + API key (see below)
+* Vercel account (optional if you plan to host the dashboard elsewhere)
+
+---
+
+## 2. Local Parity Stack
+
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   python -m spacy download en_core_web_sm
+   ```
+2. Launch the docker-compose stack (API, worker, Kafka, Neo4j, Milvus, Redis):
+   ```bash
+   cd panopticon/infrastructure
+   docker compose up --build
+   ```
+    The API is available at http://localhost:8000 once you export `PANOPTICON_API_KEY` (for local testing you can set it to `dev-panopticon`). Export `PANOPTICON_API_BASE_URL=http://localhost:8000` so the bundled crawler and workers can reach the API over HTTP.
+
+---
+
+## 3. Render Deployment
+
+### 3.1 Install & Authenticate CLI
+
 ```bash
-cd dist
-./adaptixserver -profile profile.json
+curl -fsSL https://render.com/static/cli/install.sh | bash
+export RENDER_API_KEY=<your_render_api_key>
+render login --api-key "$RENDER_API_KEY"
 ```
 
-Server will start on: `https://0.0.0.0:4321/tcolaugh`
+### 3.2 Create Services
 
-### Connect with Client
+Render understands `render.yaml` directly:
+
 ```bash
-cd dist
-./AdaptixClient
+render blueprint launch --from-file render.yaml
 ```
 
-**Connection Details:**
-- Server: `https://YOUR_IP:4321/tcolaugh`
-- Password: `TCOLaugh2025!Secure`
+During the launch:
 
-**Operator Accounts:**
-- Admin: `admin` / `Admin@TCO2025!`
-- Operator: `operator` / `Operator@TCO2025!`
+* Provide `ANTHROPIC_API_KEY` only if you want GraphRAG enabled.
+* Generate secrets for **every** sensitive variable (`PANOPTICON_API_KEY`, `NEO4J_PASSWORD`, `REDIS_URL`, etc.) and add them via `render env:set` or the dashboard. Render does not auto-generate them.
+* Set `PANOPTICON_API_BASE_URL` to the final Render URL so crawler/worker services know where to send ingestion events.
+* Tune or accept defaults for `PANOPTICON_MAX_SEARCH_RESULTS`, `PANOPTICON_RATE_LIMIT_WINDOW`, and `PANOPTICON_RATE_LIMIT_MAX` depending on your tier.
+* Point `NEO4J_URI`, `MILVUS_HOST`, etc. to managed deployments if you are not using local Docker services.
 
----
+To update an existing deployment:
 
-## ☁️ Render Deployment
-
-### Option 1: Using Render Dashboard
-1. Go to [render.com](https://render.com)
-2. Create New → Web Service
-3. Connect your GitHub repo: `oranolio956/TCOLaugh`
-4. Use Docker environment
-5. Set Dockerfile path: `Dockerfile.render`
-6. Deploy!
-
-### Option 2: Using Render API
 ```bash
-curl -X POST https://api.render.com/v1/services \
-  -H "Authorization: Bearer rnd_8k1otMACNZ6I1mmr2Wj5Km1Sq11L" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "web_service",
-    "name": "tcolaugh-c2",
-    "ownerId": "YOUR_OWNER_ID",
-    "repo": "https://github.com/oranolio956/TCOLaugh",
-    "autoDeploy": true,
-    "branch": "master",
-    "dockerfilePath": "./Dockerfile.render",
-    "envVars": [
-      {"key": "PORT", "value": "4321"}
-    ]
-  }'
+render blueprint sync --from-file render.yaml
 ```
 
-### After Deployment
-Your server will be available at:
-`https://tcolaugh-c2.onrender.com:10000/tcolaugh`
+### 3.3 Managed Services Checklist
 
-⚠️ **Note:** Free tier spins down after 15 minutes of inactivity.
-
----
-
-## 🌐 Netlify Deployment (Phishing/Payload Delivery)
-
-### Deploy a Landing Page
-```bash
-cd netlify-site
-netlify deploy --prod --auth nfp_ipxfC11Ujv9gD1TmM6mMsmy8jg5dpoeg7f5f
-```
-
-### Use Cases:
-- Host fake login pages
-- Payload delivery sites
-- Redirectors to C2 infrastructure
+| Service | Option | Notes |
+| --- | --- | --- |
+| Neo4j | AuraDB or self-hosted | Set `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD` via Render secrets |
+| Milvus | Zilliz Cloud or Docker service | Set `MILVUS_HOST`, `MILVUS_PORT` |
+| Kafka | Confluent Cloud / Aiven | Set `PANOPTICON_USE_KAFKA=true`, provide `KAFKA_BOOTSTRAP_SERVERS` + `PANOPTICON_KAFKA_TOPIC`, and reconfigure the crawler |
+| Redis | Render managed | Add the Redis add-on and update `REDIS_URL` |
+| HTTP ingest | N/A | Ensure crawler/worker services receive `PANOPTICON_API_BASE_URL` + `PANOPTICON_API_KEY` so they can POST to `/ingest/record` |
 
 ---
 
-## 🔐 Security Notes
+## 4. Vercel Dashboard
 
-1. **Change Default Passwords** - Update `dist/profile.json`
-2. **SSL Certificates** - Regenerate for production use
-3. **Firewall Rules** - Restrict access to port 4321
-4. **Operator Accounts** - Create unique credentials per operator
-
----
-
-## 📊 Architecture
-
-```
-┌─────────────────────────────────────────┐
-│         Render Cloud (Server)           │
-│  https://tcolaugh-c2.onrender.com:4321  │
-│         ↓                                │
-│   AdaptixServer + Extenders             │
-└─────────────────────────────────────────┘
-              ↑
-              │ (Encrypted WebSocket)
-              ↓
-┌─────────────────────────────────────────┐
-│      Your Local Machine (Client)        │
-│         AdaptixClient GUI               │
-└─────────────────────────────────────────┘
-              ↑
-              │ (Agent Callbacks)
-              ↓
-┌─────────────────────────────────────────┐
-│       Target Systems (Agents)           │
-│    Beacon / Gopher Agents               │
-└─────────────────────────────────────────┘
-```
+1. Install the Vercel CLI (`npm i -g vercel`).
+2. Deploy the static dashboard:
+   ```bash
+   vercel --cwd panopticon/api/templates
+   ```
+3. After the deployment, open the dashboard URL, enter the Render API base URL and `PANOPTICON_API_KEY` in the Connection Settings panel.
 
 ---
 
-## 🛠️ Troubleshooting
+## 5. Operations Checklist
 
-### Server won't start
-- Check port 4321 is available
-- Verify SSL certificates exist
-- Check profile.json syntax
-
-### Can't connect with client
-- Verify server URL and port
-- Check firewall rules
-- Confirm password is correct
-
-### Agents not connecting
-- Verify listener is running
-- Check agent configuration
-- Confirm network connectivity
+* **Secrets** – rotate `PANOPTICON_API_KEY`, `NEO4J_PASSWORD`, `ANTHROPIC_API_KEY`, etc. in Render’s dashboard; redeploy to propagate. Never store these values in git.
+* **Celery** – monitor `worker.log` (Render logs tab or `render logs panopticon-worker`) for ingestion errors.
+* **Crawler ingest** – verify the crawler service can hit `/ingest/record` (check logs for “Ingested record via HTTP”). If not, ensure the API key/base URL env vars are set.
+* **Data retention** – adjust `PANOPTICON_DOCUMENT_TTL_SECONDS` to control how long non-audit documents stay in SQLite.
+* **Scaling** – increase Render plan tiers or add horizontal scaling once CPU usage grows; the worker and crawler can be scaled independently.
+* **Backups** – Render disks are not automatically backed up; snapshot `panopticon.db` (or migrate to a managed DB) if you need durability beyond the built-in disk redundancy.
 
 ---
 
-## 📝 Credentials Summary
-
-**Server Access:**
-- Endpoint: `/tcolaugh`
-- Port: `4321`
-- Server Password: `TCOLaugh2025!Secure`
-
-**Operators:**
-- Admin: `admin` / `Admin@TCO2025!`
-- Operator: `operator` / `Operator@TCO2025!`
-
-**API Keys:**
-- Render: `rnd_8k1otMACNZ6I1mmr2Wj5Km1Sq11L`
-- Netlify: `nfp_ipxfC11Ujv9gD1TmM6mMsmy8jg5dpoeg7f5f`
-
----
-
-## ⚖️ Legal Notice
-
-This tool is for **authorized security testing only**. Unauthorized use is illegal.
-Always obtain written permission before testing.
+Need help automating the CLI steps or wiring up managed databases? Let me know which provider you chose and I can provide concrete commands.*** End Patch
