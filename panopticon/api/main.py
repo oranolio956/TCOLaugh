@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -63,6 +64,16 @@ try:
 except Exception as e:
     logger.error(f"Failed to initialize ActiveScanner: {e}")
     scanner = None  # Will be handled in endpoint
+
+# Cleanup on shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup resources on shutdown."""
+    if scanner:
+        try:
+            await scanner.close()
+        except Exception as e:
+            logger.warning(f"Error closing scanner: {e}")
 
 try:
     face_engine = FaceEngine()
@@ -292,12 +303,17 @@ async def active_recon(request: ReconRequest):
     
     try:
         hits = await scanner.check_username(request.username)
-        # Persist results
+        # Persist results with proper timestamp
         doc_id = f"recon_{request.username}"
         db_instance.add_document(
-            doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
+            doc_id, "active_recon", time.time(), {"username": request.username, "hits": hits}
         )
-        return {"username": request.username, "found_on": hits}
+        return {
+            "username": request.username,
+            "found_on": hits,
+            "total_found": len(hits),
+            "scan_timestamp": time.time()
+        }
     except Exception as e:
         logger.error(f"Error in active_recon: {e}")
         raise HTTPException(status_code=500, detail=f"Reconnaissance failed: {str(e)}")

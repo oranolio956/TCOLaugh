@@ -164,6 +164,9 @@ class ActiveScanner:
         logger.info("Starting username scan for '%s'...", username)
         
         # Get platforms to check
+        platforms = None
+        sites_to_check = None
+        
         if self.platform_db and self.platform_db.count() > 0:
             # Use platform database
             if platform_filter:
@@ -184,7 +187,6 @@ class ActiveScanner:
             logger.info(f"Checking {len(platforms)} platforms for username '{username}'")
         else:
             # Fallback to simple sites
-            platforms = None
             if platform_filter:
                 sites_to_check = {k: v for k, v in self.sites.items() if k in platform_filter}
             else:
@@ -207,7 +209,12 @@ class ActiveScanner:
                 start_time = time.time()
                 try:
                     # Get platform name for rate limiting
-                    platform_name = platform_or_site.name if platforms else platform_or_site[0]
+                    if platforms:
+                        platform_name = platform_or_site.name
+                    elif isinstance(platform_or_site, tuple):
+                        platform_name = platform_or_site[0]
+                    else:
+                        platform_name = "unknown"
                     
                     # Rate limiting (if enabled)
                     if self.rate_limiter:
@@ -225,8 +232,13 @@ class ActiveScanner:
                         result = await self._check_site_fallback(client, site_name, template.format(username), site_name, start_time)
                     
                     # Close client if it was proxy-specific (not the shared one)
-                    if use_proxy and client != self._client:
-                        await client.aclose()
+                    # Note: We can't easily compare clients, so we'll close if use_proxy is True
+                    # This is safe because proxy clients are created per-request
+                    if use_proxy:
+                        try:
+                            await client.aclose()
+                        except Exception:
+                            pass  # Ignore errors closing proxy clients
                     
                     if result:
                         async with results_lock:
@@ -247,23 +259,35 @@ class ActiveScanner:
                 for platform in platforms
                 if platform.validate_username(username)
             ]
-        else:
+        elif sites_to_check:
             tasks = [
                 check_with_semaphore((site, template))
                 for site, template in sites_to_check.items()
             ]
+        else:
+            # No platforms to check (empty filter or all filtered out)
+            logger.warning(f"No platforms to check for username '{username}'")
+            tasks = []
         
         # Execute with early termination support
         if self.early_termination or max_results:
-            # Check tasks one by one and stop early if needed
-            for task in asyncio.as_completed(tasks):
-                status = await task
+            # Create task objects for cancellation
+            task_objects = [asyncio.create_task(task) for task in tasks]
+            
+            # Check tasks as they complete
+            for coro in asyncio.as_completed(task_objects):
+                status = await coro
                 if status == "stop":
                     # Cancel remaining tasks
-                    for t in tasks:
-                        if not t.done():
-                            t.cancel()
+                    for task in task_objects:
+                        if not task.done():
+                            task.cancel()
+                    # Wait for cancellations
+                    await asyncio.gather(*task_objects, return_exceptions=True)
                     break
+            else:
+                # All tasks completed normally
+                await asyncio.gather(*task_objects, return_exceptions=True)
         else:
             # Execute all tasks
             await asyncio.gather(*tasks, return_exceptions=True)
