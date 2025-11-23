@@ -31,11 +31,18 @@ MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
 milvus_index = MilvusManager()
 DASHBOARD_DEFAULT_BASE_URL = os.environ.get("PANOPTICON_DASHBOARD_BASE_URL")
 DASHBOARD_DEFAULT_API_KEY = os.environ.get("PANOPTICON_DASHBOARD_API_KEY")
+DEFAULT_CORS_ORIGINS = [
+    "https://panopticon-dashboard.vercel.app",
+    "https://tco-laugh.vercel.app",
+    "https://tcolaugh.vercel.app",
+]
 CORS_ORIGINS = [
     origin.strip()
     for origin in os.environ.get("PANOPTICON_CORS_ORIGINS", "").split(",")
     if origin.strip()
-]
+] or DEFAULT_CORS_ORIGINS
+# Always make sure known frontends are included
+CORS_ORIGINS = sorted(set(CORS_ORIGINS + DEFAULT_CORS_ORIGINS))
 CORS_REGEX = os.environ.get("PANOPTICON_CORS_ORIGIN_REGEX")
 CORS_ALLOW_CREDENTIALS = bool(CORS_ORIGINS or CORS_REGEX)
 
