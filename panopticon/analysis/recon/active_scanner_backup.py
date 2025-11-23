@@ -1,11 +1,3 @@
-"""
-Optimized ActiveScanner with performance improvements:
-- HTTP connection pooling
-- Reduced timeouts
-- Better concurrency control
-- Early termination option
-- Skip slow/unreliable platforms
-"""
 import asyncio
 import logging
 import os
@@ -20,29 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class ActiveScanner:
-    def __init__(
-        self,
-        timeout: Optional[float] = None,
-        platform_db_path: Optional[str] = None,
-        max_concurrent: int = 50,
-        early_termination: Optional[int] = None,
-    ):
+    def __init__(self, timeout: Optional[float] = None, platform_db_path: Optional[str] = None):
         """
-        Initialize the Active Scanner with performance optimizations.
+        Initialize the Active Scanner.
         
         Args:
-            timeout: Request timeout in seconds (default: 3.0 for faster results)
+            timeout: Request timeout in seconds
             platform_db_path: Path to platform database JSON file (optional)
-            max_concurrent: Maximum concurrent requests (default: 50)
-            early_termination: Return after N results found (None = check all)
         """
-        # Reduced timeout for faster results (most requests complete in <200ms)
-        self.timeout = timeout or float(os.environ.get("PANOPTICON_RECON_TIMEOUT", "3.0"))
-        self.max_concurrent = max_concurrent
-        self.early_termination = early_termination
-        
-        # HTTP client with connection pooling (reused across requests)
-        self._client: Optional[httpx.AsyncClient] = None
+        self.timeout = timeout or float(os.environ.get("PANOPTICON_RECON_TIMEOUT", "6"))
         
         # Load platform database
         try:
@@ -62,51 +40,15 @@ class ActiveScanner:
                 "Reddit": "https://www.reddit.com/user/{}",
             }
         else:
-            self.sites = None
-        
-        # Known slow/unreliable platforms to skip (can be overridden)
-        self.skip_platforms = set([
-            # Platforms that frequently timeout or return 403
-            "BreachSta.rs Forum",  # DNS issues
-            # Add more as we discover them
-        ])
+            self.sites = None  # Will use platform_db instead
 
-    async def _get_client(self) -> httpx.AsyncClient:
-        """Get or create HTTP client with connection pooling."""
-        if self._client is None:
-            # Create client with optimized settings
-            limits = httpx.Limits(
-                max_keepalive_connections=20,
-                max_connections=100,
-                keepalive_expiry=30.0
-            )
-            self._client = httpx.AsyncClient(
-                timeout=self.timeout,
-                follow_redirects=True,
-                limits=limits
-                # Note: http2=True requires 'pip install httpx[http2]' but provides better performance
-            )
-        return self._client
-
-    async def close(self):
-        """Close HTTP client."""
-        if self._client:
-            await self._client.aclose()
-            self._client = None
-
-    async def check_username(
-        self,
-        username: str,
-        platform_filter: Optional[List[str]] = None,
-        max_results: Optional[int] = None
-    ) -> List[Dict[str, Any]]:
+    async def check_username(self, username: str, platform_filter: Optional[List[str]] = None) -> List[Dict[str, Any]]:
         """
         Checks if a username exists across multiple platforms using concurrent HTTP calls.
         
         Args:
             username: Username to check
             platform_filter: Optional list of platform names to check (None = all platforms)
-            max_results: Maximum number of results to return (None = all found)
         
         Returns:
             List of results with platform name, URL, status, and detection details
@@ -125,11 +67,8 @@ class ActiveScanner:
             else:
                 platforms = list(self.platform_db.get_all_platforms().values())
             
-            # Filter out NSFW platforms by default
+            # Filter out NSFW platforms by default (can be enabled via filter)
             platforms = [p for p in platforms if not p.is_nsfw or (platform_filter and p.name in platform_filter)]
-            
-            # Skip known slow/unreliable platforms
-            platforms = [p for p in platforms if p.name not in self.skip_platforms]
             
             logger.info(f"Checking {len(platforms)} platforms for username '{username}'")
         else:
@@ -142,64 +81,35 @@ class ActiveScanner:
             
             logger.info(f"Checking {len(sites_to_check)} platforms (fallback mode) for username '{username}'")
         
-        # Get HTTP client
-        client = await self._get_client()
-        
-        # Execute checks concurrently with semaphore for rate limiting
-        semaphore = asyncio.Semaphore(self.max_concurrent)
+        # Execute checks concurrently
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+            if platforms:
+                # Use platform database
+                tasks = [
+                    self._check_platform(client, platform, username)
+                    for platform in platforms
+                    if platform.validate_username(username)
+                ]
+            else:
+                # Use fallback sites
+                tasks = [
+                    self._check_site_fallback(client, site, template.format(username), site)
+                    for site, template in sites_to_check.items()
+                ]
+            
+            responses = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Process results
         results: List[Dict[str, Any]] = []
-        results_lock = asyncio.Lock()
+        for resp in responses:
+            if isinstance(resp, dict):
+                results.append(resp)
+            elif isinstance(resp, Exception):
+                logger.warning(f"Exception during platform check: {resp}")
         
-        async def check_with_semaphore(platform_or_site):
-            """Check platform with semaphore control."""
-            async with semaphore:
-                if platforms:
-                    result = await self._check_platform(client, platform_or_site, username)
-                else:
-                    site_name, template = platform_or_site
-                    result = await self._check_site_fallback(client, site_name, template.format(username), site_name)
-                
-                if result:
-                    async with results_lock:
-                        results.append(result)
-                        # Early termination if we have enough results
-                        if self.early_termination and len(results) >= self.early_termination:
-                            return "stop"
-                        if max_results and len(results) >= max_results:
-                            return "stop"
-                return "continue"
-        
-        # Create tasks
-        if platforms:
-            tasks = [
-                check_with_semaphore(platform)
-                for platform in platforms
-                if platform.validate_username(username)
-            ]
-        else:
-            tasks = [
-                check_with_semaphore((site, template))
-                for site, template in sites_to_check.items()
-            ]
-        
-        # Execute with early termination support
-        if self.early_termination or max_results:
-            # Check tasks one by one and stop early if needed
-            for task in asyncio.as_completed(tasks):
-                status = await task
-                if status == "stop":
-                    # Cancel remaining tasks
-                    for t in tasks:
-                        if not t.done():
-                            t.cancel()
-                    break
-        else:
-            # Execute all tasks
-            await asyncio.gather(*tasks, return_exceptions=True)
-        
-        found_count = len(results)
+        found_count = sum(1 for r in results if r.get('status') == 'found' or r.get('found', False))
         logger.info(f"Found username on {found_count} platform(s)")
-        return results[:max_results] if max_results else results
+        return results
 
     async def _check_platform(
         self, client: httpx.AsyncClient, platform: PlatformDefinition, username: str
@@ -264,7 +174,7 @@ class ActiveScanner:
             logger.debug(f"Timeout checking {platform.name} for {username}")
             return None
         except Exception as exc:
-            logger.debug(f"Error checking {platform.name} for {username}: {exc}")
+            logger.warning(f"Error checking {platform.name} for {username}: {exc}")
             return None
 
     async def _check_site_fallback(
@@ -290,7 +200,7 @@ class ActiveScanner:
             if response.status_code == 200:
                 return {"site": site, "url": str(response.url), "status": "found"}
         except Exception as exc:
-            logger.debug(f"Error checking {site}: {exc}")
+            logger.warning("Error checking %s: %s", site, exc)
         return None
 
     def hlr_lookup(self, phone_number: str) -> Dict[str, Any]:

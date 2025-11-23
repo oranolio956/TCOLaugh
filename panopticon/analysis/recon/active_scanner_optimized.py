@@ -83,8 +83,8 @@ class ActiveScanner:
             self._client = httpx.AsyncClient(
                 timeout=self.timeout,
                 follow_redirects=True,
-                limits=limits
-                # Note: http2=True requires 'pip install httpx[http2]' but provides better performance
+                limits=limits,
+                http2=True  # HTTP/2 for better performance
             )
         return self._client
 
