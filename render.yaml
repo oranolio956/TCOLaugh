@@ -35,9 +35,33 @@ services:
       - key: PANOPTICON_INDEX_FIELDS
         value: email,username,phone,ip_address
       - key: PANOPTICON_RECON_TIMEOUT
-        value: "6"
+        value: "3"
       - key: PANOPTICON_AI_GRAPH_LIMIT
         value: "40"
+      # Phase 3: Stealth Features (Optional - proxies disabled by default)
+      - key: PANOPTICON_ENABLE_PROXY
+        value: "false"
+      # Uncomment and configure if using Smartproxy:
+      # - key: SMARTPROXY_ENDPOINT
+      #   value: "http://gate.smartproxy.com:10000"
+      # - key: SMARTPROXY_USERNAME
+      #   value: REPLACE_WITH_RENDER_SECRET
+      # - key: SMARTPROXY_PASSWORD
+      #   value: REPLACE_WITH_RENDER_SECRET
+      # Uncomment and configure if using IPRoyal:
+      # - key: IPROYAL_ENDPOINT
+      #   value: "http://gate.iproyal.com:12321"
+      # - key: IPROYAL_USERNAME
+      #   value: REPLACE_WITH_RENDER_SECRET
+      # - key: IPROYAL_PASSWORD
+      #   value: REPLACE_WITH_RENDER_SECRET
+      # Uncomment and configure if using Bright Data:
+      # - key: BRIGHTDATA_ENDPOINT
+      #   value: "http://zproxy.lum-superproxy.io:22225"
+      # - key: BRIGHTDATA_USERNAME
+      #   value: REPLACE_WITH_RENDER_SECRET
+      # - key: BRIGHTDATA_PASSWORD
+      #   value: REPLACE_WITH_RENDER_SECRET
     disk:
       name: data
       mountPath: /var/data

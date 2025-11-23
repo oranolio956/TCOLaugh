@@ -9,19 +9,12 @@ Optimized ActiveScanner with performance improvements:
 import asyncio
 import logging
 import os
-import time
 from typing import Any, Dict, List, Optional
 
 import httpx
 
 from panopticon.analysis.recon.detection_engine import DetectionEngine
-# Enhanced detection is now the default
-USE_ENHANCED_DETECTION = True
-EnhancedDetectionEngine = DetectionEngine
 from panopticon.analysis.recon.platform_database import PlatformDatabase, PlatformDefinition
-from panopticon.analysis.recon.proxy_manager import ProxyManager, ProxyConfig
-from panopticon.analysis.recon.user_agent_rotator import UserAgentRotator
-from panopticon.analysis.recon.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -33,40 +26,20 @@ class ActiveScanner:
         platform_db_path: Optional[str] = None,
         max_concurrent: int = 50,
         early_termination: Optional[int] = None,
-        enable_proxy: Optional[bool] = None,
-        proxy_configs: Optional[List[ProxyConfig]] = None,
-        enable_rate_limiting: bool = True,
-        enable_user_agent_rotation: bool = True,
     ):
         """
-        Initialize the Active Scanner with performance optimizations and stealth features.
+        Initialize the Active Scanner with performance optimizations.
         
         Args:
             timeout: Request timeout in seconds (default: 3.0 for faster results)
             platform_db_path: Path to platform database JSON file (optional)
             max_concurrent: Maximum concurrent requests (default: 50)
             early_termination: Return after N results found (None = check all)
-            enable_proxy: Whether to use proxies (None = auto-detect from env)
-            proxy_configs: List of proxy configurations (optional)
-            enable_rate_limiting: Whether to use rate limiting (default: True)
-            enable_user_agent_rotation: Whether to rotate User-Agents (default: True)
         """
         # Reduced timeout for faster results (most requests complete in <200ms)
         self.timeout = timeout or float(os.environ.get("PANOPTICON_RECON_TIMEOUT", "3.0"))
         self.max_concurrent = max_concurrent
         self.early_termination = early_termination
-        
-        # Stealth features
-        if enable_proxy is None:
-            enable_proxy = bool(os.environ.get("PANOPTICON_ENABLE_PROXY", "false").lower() == "true")
-        
-        self.proxy_manager = ProxyManager(
-            proxy_configs=proxy_configs,
-            enable_proxy=enable_proxy
-        )
-        
-        self.rate_limiter = RateLimiter() if enable_rate_limiting else None
-        self.user_agent_rotator = UserAgentRotator() if enable_user_agent_rotation else None
         
         # HTTP client with connection pooling (reused across requests)
         self._client: Optional[httpx.AsyncClient] = None
@@ -98,34 +71,10 @@ class ActiveScanner:
             # Add more as we discover them
         ])
 
-    async def _get_client(self, use_proxy: bool = True) -> httpx.AsyncClient:
-        """
-        Get or create HTTP client with connection pooling and proxy support.
-        
-        Args:
-            use_proxy: Whether to use proxy for this client
-        
-        Note: If proxies are enabled, we create a new client per request for rotation.
-        Otherwise, we reuse a single client for connection pooling.
-        """
-        # If proxies are enabled, create client per request for rotation
-        if use_proxy and self.proxy_manager.enable_proxy:
-            proxy_dict = await self.proxy_manager.get_proxy(rotate=True)
-            if proxy_dict:
-                limits = httpx.Limits(
-                    max_keepalive_connections=20,
-                    max_connections=100,
-                    keepalive_expiry=30.0
-                )
-                return httpx.AsyncClient(
-                    timeout=self.timeout,
-                    follow_redirects=True,
-                    limits=limits,
-                    proxies=proxy_dict
-                )
-        
-        # Reuse single client when proxies disabled (connection pooling)
+    async def _get_client(self) -> httpx.AsyncClient:
+        """Get or create HTTP client with connection pooling."""
         if self._client is None:
+            # Create client with optimized settings
             limits = httpx.Limits(
                 max_keepalive_connections=20,
                 max_connections=100,
@@ -134,7 +83,8 @@ class ActiveScanner:
             self._client = httpx.AsyncClient(
                 timeout=self.timeout,
                 follow_redirects=True,
-                limits=limits
+                limits=limits,
+                http2=True  # HTTP/2 for better performance
             )
         return self._client
 
@@ -164,9 +114,6 @@ class ActiveScanner:
         logger.info("Starting username scan for '%s'...", username)
         
         # Get platforms to check
-        platforms = None
-        sites_to_check = None
-        
         if self.platform_db and self.platform_db.count() > 0:
             # Use platform database
             if platform_filter:
@@ -187,6 +134,7 @@ class ActiveScanner:
             logger.info(f"Checking {len(platforms)} platforms for username '{username}'")
         else:
             # Fallback to simple sites
+            platforms = None
             if platform_filter:
                 sites_to_check = {k: v for k, v in self.sites.items() if k in platform_filter}
             else:
@@ -194,9 +142,8 @@ class ActiveScanner:
             
             logger.info(f"Checking {len(sites_to_check)} platforms (fallback mode) for username '{username}'")
         
-        # Note: Client will be created per-task if proxies enabled (for rotation)
-        # Otherwise, we'll reuse a single client
-        use_proxy = self.proxy_manager.enable_proxy if self.proxy_manager else False
+        # Get HTTP client
+        client = await self._get_client()
         
         # Execute checks concurrently with semaphore for rate limiting
         semaphore = asyncio.Semaphore(self.max_concurrent)
@@ -204,52 +151,22 @@ class ActiveScanner:
         results_lock = asyncio.Lock()
         
         async def check_with_semaphore(platform_or_site):
-            """Check platform with semaphore control and stealth features."""
+            """Check platform with semaphore control."""
             async with semaphore:
-                start_time = time.time()
-                try:
-                    # Get platform name for rate limiting
-                    if platforms:
-                        platform_name = platform_or_site.name
-                    elif isinstance(platform_or_site, tuple):
-                        platform_name = platform_or_site[0]
-                    else:
-                        platform_name = "unknown"
-                    
-                    # Rate limiting (if enabled)
-                    if self.rate_limiter:
-                        await self.rate_limiter.wait_if_needed(platform_name)
-                        # Add random delay for human-like behavior
-                        await self.rate_limiter.add_delay(platform_name, min_delay=0.1, max_delay=0.5)
-                    
-                    # Get client (with proxy rotation if enabled)
-                    client = await self._get_client(use_proxy=use_proxy)
-                    
-                    if platforms:
-                        result = await self._check_platform(client, platform_or_site, username, start_time)
-                    else:
-                        site_name, template = platform_or_site
-                        result = await self._check_site_fallback(client, site_name, template.format(username), site_name, start_time)
-                    
-                    # Close client if it was proxy-specific (not the shared one)
-                    # Note: We can't easily compare clients, so we'll close if use_proxy is True
-                    # This is safe because proxy clients are created per-request
-                    if use_proxy:
-                        try:
-                            await client.aclose()
-                        except Exception:
-                            pass  # Ignore errors closing proxy clients
-                    
-                    if result:
-                        async with results_lock:
-                            results.append(result)
-                            # Early termination if we have enough results
-                            if self.early_termination and len(results) >= self.early_termination:
-                                return "stop"
-                            if max_results and len(results) >= max_results:
-                                return "stop"
-                except Exception as e:
-                    logger.debug(f"Error in check_with_semaphore: {e}")
+                if platforms:
+                    result = await self._check_platform(client, platform_or_site, username)
+                else:
+                    site_name, template = platform_or_site
+                    result = await self._check_site_fallback(client, site_name, template.format(username), site_name)
+                
+                if result:
+                    async with results_lock:
+                        results.append(result)
+                        # Early termination if we have enough results
+                        if self.early_termination and len(results) >= self.early_termination:
+                            return "stop"
+                        if max_results and len(results) >= max_results:
+                            return "stop"
                 return "continue"
         
         # Create tasks
@@ -259,35 +176,23 @@ class ActiveScanner:
                 for platform in platforms
                 if platform.validate_username(username)
             ]
-        elif sites_to_check:
+        else:
             tasks = [
                 check_with_semaphore((site, template))
                 for site, template in sites_to_check.items()
             ]
-        else:
-            # No platforms to check (empty filter or all filtered out)
-            logger.warning(f"No platforms to check for username '{username}'")
-            tasks = []
         
         # Execute with early termination support
         if self.early_termination or max_results:
-            # Create task objects for cancellation
-            task_objects = [asyncio.create_task(task) for task in tasks]
-            
-            # Check tasks as they complete
-            for coro in asyncio.as_completed(task_objects):
-                status = await coro
+            # Check tasks one by one and stop early if needed
+            for task in asyncio.as_completed(tasks):
+                status = await task
                 if status == "stop":
                     # Cancel remaining tasks
-                    for task in task_objects:
-                        if not task.done():
-                            task.cancel()
-                    # Wait for cancellations
-                    await asyncio.gather(*task_objects, return_exceptions=True)
+                    for t in tasks:
+                        if not t.done():
+                            t.cancel()
                     break
-            else:
-                # All tasks completed normally
-                await asyncio.gather(*task_objects, return_exceptions=True)
         else:
             # Execute all tasks
             await asyncio.gather(*tasks, return_exceptions=True)
@@ -297,7 +202,7 @@ class ActiveScanner:
         return results[:max_results] if max_results else results
 
     async def _check_platform(
-        self, client: httpx.AsyncClient, platform: PlatformDefinition, username: str, start_time: Optional[float] = None
+        self, client: httpx.AsyncClient, platform: PlatformDefinition, username: str
     ) -> Optional[Dict[str, Any]]:
         """
         Check a single platform using the platform definition.
@@ -313,22 +218,9 @@ class ActiveScanner:
         url = platform.build_url(username)
         
         try:
-            # Track request start time
-            request_start = start_time if start_time else time.time()
-            
-            # Prepare headers with User-Agent rotation
-            if self.user_agent_rotator:
-                user_agent = self.user_agent_rotator.get_rotated()
-            else:
-                user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            
+            # Prepare headers
             headers = {
-                "User-Agent": user_agent,
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-                "Accept-Encoding": "gzip, deflate, br",
-                "Connection": "keep-alive",
-                "Upgrade-Insecure-Requests": "1",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
             }
             headers.update(platform.headers)
             
@@ -342,34 +234,21 @@ class ActiveScanner:
             else:
                 response = await client.get(url, headers=headers)
             
-            # Calculate response time
-            response_time = time.time() - request_start
-            
             # Get final URL after redirects
             final_url = str(response.url)
             
-            # Detect using intelligent engine (enhanced if available)
-            if USE_ENHANCED_DETECTION:
-                detection_result = EnhancedDetectionEngine.detect_enhanced(
-                    platform,
-                    response.status_code,
-                    response.text,
-                    url,
-                    final_url,
-                    response_time=response_time
-                )
-            else:
-                detection_result = DetectionEngine.detect(
-                    platform,
-                    response.status_code,
-                    response.text,
-                    url,
-                    final_url
-                )
+            # Detect using intelligent engine
+            detection_result = DetectionEngine.detect(
+                platform,
+                response.status_code,
+                response.text,
+                url,
+                final_url
+            )
             
             # Only return if username was found
             if detection_result.found:
-                result = {
+                return {
                     "site": platform.name,
                     "url": final_url,
                     "status": "found",
@@ -378,12 +257,6 @@ class ActiveScanner:
                     "details": detection_result.details,
                     "status_code": response.status_code
                 }
-                # Add enhanced metadata if available
-                if USE_ENHANCED_DETECTION and hasattr(detection_result, 'methods_used'):
-                    result["methods_used"] = detection_result.methods_used
-                if response_time:
-                    result["response_time_ms"] = round(response_time * 1000, 2)
-                return result
             
             return None
         
@@ -395,7 +268,7 @@ class ActiveScanner:
             return None
 
     async def _check_site_fallback(
-        self, client: httpx.AsyncClient, site: str, url: str, label: str, start_time: Optional[float] = None
+        self, client: httpx.AsyncClient, site: str, url: str, label: str
     ) -> Optional[Dict[str, str]]:
         """
         Fallback method for simple site checking (backward compatibility).
@@ -410,24 +283,12 @@ class ActiveScanner:
             Result dict or None
         """
         try:
-            request_start = start_time if start_time else time.time()
-            
-            # Get User-Agent
-            if self.user_agent_rotator:
-                user_agent = self.user_agent_rotator.get_rotated()
-            else:
-                user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            
             response = await client.get(
                 url,
-                headers={"User-Agent": user_agent}
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             )
-            response_time = time.time() - request_start
             if response.status_code == 200:
-                result = {"site": site, "url": str(response.url), "status": "found"}
-                if response_time:
-                    result["response_time_ms"] = round(response_time * 1000, 2)
-                return result
+                return {"site": site, "url": str(response.url), "status": "found"}
         except Exception as exc:
             logger.debug(f"Error checking {site}: {exc}")
         return None

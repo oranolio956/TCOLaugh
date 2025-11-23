@@ -71,7 +71,7 @@ python3 panopticon/scenario_test.py
 | `PANOPTICON_DOCUMENT_TTL_SECONDS` | `0` (disabled) | Automatically purge non-audit documents older than the TTL |
 | `PANOPTICON_INDEX_FIELDS` | `email,username,phone,ip_address` | CSV of document keys that should be indexed for fast lookup |
 | `PANOPTICON_USE_KAFKA` | `false` | When `true`, ingestion pushes to Kafka instead of SQLite fallback |
-| `PANOPTICON_RECON_TIMEOUT` | `6` | Timeout (seconds) for concurrent username reconnaissance calls |
+| `PANOPTICON_RECON_TIMEOUT` | `3` | Timeout (seconds) for concurrent username reconnaissance calls |
 | `PANOPTICON_AI_GRAPH_LIMIT` | `40` | Max number of nodes/edges summarized before sending to the LLM |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | `bolt://localhost:7687`, `neo4j`, `panopticon_secret` | Point workers at a managed Neo4j instance |
 | `MILVUS_HOST` / `MILVUS_PORT` | `localhost`, `19530` | Milvus vector DB endpoint; falls back to SQLite vectors if unset |

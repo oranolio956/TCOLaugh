@@ -2,6 +2,7 @@ import logging
 import os
 import secrets
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -58,9 +59,33 @@ app.add_middleware(
 app.add_middleware(SecurityMiddleware)
 
 # Initialize services
-scanner = ActiveScanner()
-face_engine = FaceEngine()
-narrator = GraphNarrator()
+try:
+    scanner = ActiveScanner()
+except Exception as e:
+    logger.error(f"Failed to initialize ActiveScanner: {e}")
+    scanner = None  # Will be handled in endpoint
+
+# Cleanup on shutdown
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup resources on shutdown."""
+    if scanner:
+        try:
+            await scanner.close()
+        except Exception as e:
+            logger.warning(f"Error closing scanner: {e}")
+
+try:
+    face_engine = FaceEngine()
+except Exception as e:
+    logger.warning(f"Failed to initialize FaceEngine: {e}")
+    face_engine = None
+
+try:
+    narrator = GraphNarrator()
+except Exception as e:
+    logger.warning(f"Failed to initialize GraphNarrator: {e}")
+    narrator = None
 
 # Setup Templates
 os.makedirs("panopticon/api/templates", exist_ok=True)
@@ -273,13 +298,25 @@ async def search_face(file: UploadFile = File(...)):
 async def active_recon(request: ReconRequest):
     # Optimized: Made async to prevent blocking the event loop during external HTTP calls
     # Note: ActiveScanner internals also need to be async for full benefit
-    hits = await scanner.check_username(request.username)
-    # Persist results
-    doc_id = f"recon_{request.username}"
-    db_instance.add_document(
-        doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
-    )
-    return {"username": request.username, "found_on": hits}
+    if scanner is None:
+        raise HTTPException(status_code=503, detail="Reconnaissance service unavailable")
+    
+    try:
+        hits = await scanner.check_username(request.username)
+        # Persist results with proper timestamp
+        doc_id = f"recon_{request.username}"
+        db_instance.add_document(
+            doc_id, "active_recon", time.time(), {"username": request.username, "hits": hits}
+        )
+        return {
+            "username": request.username,
+            "found_on": hits,
+            "total_found": len(hits),
+            "scan_timestamp": time.time()
+        }
+    except Exception as e:
+        logger.error(f"Error in active_recon: {e}")
+        raise HTTPException(status_code=500, detail=f"Reconnaissance failed: {str(e)}")
 
 
 @app.post("/ingest/record")

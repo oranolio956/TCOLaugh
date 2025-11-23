@@ -194,7 +194,7 @@ class RenderDeployer:
             "PANOPTICON_USE_KAFKA": "false",
             "PANOPTICON_DOCUMENT_TTL_SECONDS": "0",
             "PANOPTICON_INDEX_FIELDS": "email,username,phone,ip_address",
-            "PANOPTICON_RECON_TIMEOUT": "6",
+            "PANOPTICON_RECON_TIMEOUT": "3",
             "PANOPTICON_AI_GRAPH_LIMIT": "40"
         })
         
