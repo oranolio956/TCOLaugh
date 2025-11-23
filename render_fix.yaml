@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: panopticon-api-847835
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn panopticon.api.simple_main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+    disk:
+      name: data
+      mountPath: /var/data
+      sizeGB: 1
+
+  - type: worker
+    name: panopticon-worker-847835
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python panopticon/worker.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+
+  - type: worker
+    name: panopticon-crawler-847835
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python panopticon/ingestion/crawlers/mock_crawler.py --continuous --delay 30
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
