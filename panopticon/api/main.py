@@ -18,6 +18,8 @@ from panopticon.analysis.narrative.graph_rag import GraphNarrator
 from panopticon.analysis.recon.active_scanner import ActiveScanner
 from panopticon.analysis.recon.web_search import WebSearch
 from panopticon.analysis.visual.face_engine import FaceEngine
+from panopticon.analysis.identity.linker import IdentityLinker
+from panopticon.ingestion.stealer_logs import StealerLogParser
 from panopticon.api.security import SecurityMiddleware
 from panopticon.ingestion.kafka_interface import persist_record as persist_ingestion_record
 from panopticon.persistence.sqlite_manager import db_instance
@@ -63,6 +65,8 @@ scanner = ActiveScanner()
 web_searcher = WebSearch()
 face_engine = FaceEngine()
 narrator = GraphNarrator()
+linker = IdentityLinker()
+stealer_parser = StealerLogParser()
 
 # Setup Templates
 os.makedirs("panopticon/api/templates", exist_ok=True)
@@ -156,6 +160,10 @@ async def search_person(query: PersonSearchRequest):
     results: List[Dict[str, Any]] = []
     truncated = False
 
+    # 0. Entity Resolution (Experimental)
+    # If multiple attributes are provided, try to find if they belong to a known cluster
+    # This is a simplification; normally we would run this on the result set
+    
     def _add_matches(records: List[Dict[str, Any]], label: str):
         nonlocal truncated
         if not records:
@@ -172,6 +180,26 @@ async def search_person(query: PersonSearchRequest):
 
     # 1. Document Search (Naive)
     # In future: Async OpenSearch calls here
+    raw_matches = []
+    if query.email:
+        raw_matches.extend(_safe_document_search("email", query.email))
+    if query.username:
+        raw_matches.extend(_safe_document_search("username", query.username))
+        
+    # Run Linker on raw matches to find clusters
+    # This step tries to merge duplicate identities found in the search results
+    if raw_matches:
+        linked_records = linker.resolve_entities(raw_matches)
+        # We might update the graph here with new clusters
+        # linker.sync_to_graph(linked_records)
+        
+        # Add to results
+        _add_matches(linked_records, "linked_identity")
+    else:
+        # Fallback if no local matches, just use whatever we found
+        pass
+
+    # 1.5 Legacy/Direct Search (if linker didn't handle it all)
     if query.email:
         docs = _safe_document_search("email", query.email)
         _add_matches(docs, "breach_record")
@@ -183,9 +211,9 @@ async def search_person(query: PersonSearchRequest):
     # 2. Graph Traversal
     graph_context = {}
     if query.email:
-        graph_context = db_instance.get_subgraph(f"email:{query.email}", depth=2)
+        graph_context = db_instance.get_subgraph(f"email:{query.email}", depth=3) # Increased depth for pivot
     elif query.username:
-        graph_context = db_instance.get_subgraph(f"user:{query.username}", depth=2)
+        graph_context = db_instance.get_subgraph(f"user:{query.username}", depth=3)
 
     # 2.5 Public Web Search (Real-time)
     public_results = []
@@ -232,6 +260,86 @@ async def search_person(query: PersonSearchRequest):
         "risk_analysis": password_analysis,
         "narrative": narrative,
         "truncated": truncated,
+    }
+
+
+@app.post("/ingest/stealer_logs")
+async def ingest_stealer_logs(file: UploadFile = File(...)):
+    """
+    Ingests a ZIP file containing 'system_info.txt' and 'passwords.txt'.
+    """
+    import zipfile
+    
+    try:
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="Empty file.")
+            
+        safe_name = _sanitize_filename(file.filename)
+        temp_dir = Path(tempfile.mkdtemp(prefix="panopticon_stealer_"))
+        zip_path = temp_dir / safe_name
+        zip_path.write_bytes(contents)
+        
+        extracted_path = temp_dir / "extracted"
+        extracted_path.mkdir()
+        
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extracted_path)
+                
+            # Recursively find folder with system_info.txt
+            log_dir = extracted_path
+            for root, dirs, files in os.walk(extracted_path):
+                if "system_info.txt" in files or "passwords.txt" in files:
+                    log_dir = Path(root)
+                    break
+            
+            result = stealer_parser.process_log_directory(str(log_dir))
+            return {"status": "ingested", "details": result}
+            
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="Invalid zip file.")
+            
+        finally:
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            
+    except Exception as e:
+        logger.error(f"Stealer ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/search/pivot")
+async def search_pivot(type: str, value: str):
+    """
+    Advanced Pivot Search.
+    type: 'hash', 'ip', 'machine'
+    value: the identifier
+    """
+    if type not in ["hash", "ip", "machine"]:
+        raise HTTPException(status_code=400, detail="Invalid pivot type.")
+        
+    start_uid = ""
+    if type == "hash":
+        start_uid = f"hash:{value}"
+    elif type == "ip":
+        start_uid = f"ip:{value}"
+    elif type == "machine":
+        start_uid = f"machine:{value}"
+        
+    graph = db_instance.get_subgraph(start_uid, depth=2)
+    
+    # Extract connected identities
+    identities = []
+    if graph and graph.get("nodes"):
+        for uid, info in graph["nodes"].items():
+            if info["type"] in ["Identity", "Email"]:
+                identities.append(info)
+                
+    return {
+        "pivot_source": start_uid,
+        "connected_identities": identities,
+        "full_graph": graph
     }
 
 
