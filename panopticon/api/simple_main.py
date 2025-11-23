@@ -14,6 +14,8 @@ app = FastAPI(title="Panopticon API", description="Simplified version for deploy
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://tco-laugh.vercel.app",
+        "https://tcolaugh.vercel.app",
         "https://workspace-alpha-five.vercel.app",
         "https://workspace-asdsas-projects-7b4d3f47.vercel.app",
         "https://workspace-6b9cje1lb-asdsas-projects-7b4d3f47.vercel.app",

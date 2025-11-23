@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CORS Debug Tool</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #ff0; }
+        .test-section {
+            background: #222;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        .warning { color: #fa0; }
+        .info { color: #0af; }
+        pre {
+            background: #111;
+            padding: 10px;
+            overflow-x: auto;
+            border-radius: 3px;
+        }
+        button {
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #555; }
+    </style>
+</head>
+<body>
+    <h1>🔍 CORS Debug Tool for TCO Laugh</h1>
+    
+    <div class="test-section">
+        <h2>API Configuration</h2>
+        <p>
+            API URL: <span class="info">https://panopticon-api-847835.onrender.com</span><br>
+            API Key: <span class="info">pano_bb0712a94164f6df7e4a4741348955bf_2024</span><br>
+            Origin: <span class="info">https://tco-laugh.vercel.app</span>
+        </p>
+        <button onclick="runAllTests()">🚀 Run All Tests</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_URL = 'https://panopticon-api-847835.onrender.com';
+        const API_KEY = 'pano_bb0712a94164f6df7e4a4741348955bf_2024';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testBasicFetch() {
+            log('<h3>Test 1: Basic Fetch (No CORS)</h3>');
+            try {
+                const response = await fetch(`${API_URL}/`, {
+                    method: 'GET',
+                    mode: 'no-cors'
+                });
+                log('✅ Basic connection successful (no-cors mode)', 'success');
+            } catch (error) {
+                log(`❌ Basic connection failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCORSFetch() {
+            log('<h3>Test 2: CORS Fetch with API Key</h3>');
+            try {
+                console.log('Attempting CORS fetch...');
+                const response = await fetch(`${API_URL}/stats`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'include',
+                    headers: {
+                        'X-API-Key': API_KEY,
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                // Check response headers in console
+                console.log('Response headers:', response.headers);
+                for (let [key, value] of response.headers.entries()) {
+                    if (key.toLowerCase().includes('access-control')) {
+                        log(`Header: ${key} = ${value}`, 'info');
+                    }
+                }
+                
+                const data = await response.json();
+                log(`✅ CORS request successful! Data: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+            } catch (error) {
+                log(`❌ CORS request failed:<br>
+                     Error Type: ${error.name}<br>
+                     Error Message: ${error.message}<br>
+                     <br>
+                     This usually means:<br>
+                     • Missing Access-Control-Allow-Origin header<br>
+                     • Origin not whitelisted<br>
+                     • Check browser console for detailed CORS error`, 'error');
+                console.error('CORS Error Details:', error);
+            }
+        }
+        
+        async function testPreflightRequest() {
+            log('<h3>Test 3: Manual Preflight Request</h3>');
+            try {
+                const response = await fetch(`${API_URL}/stats`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'X-API-Key',
+                        'Origin': window.location.origin
+                    }
+                });
+                
+                const corsHeaders = {
+                    'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
+                    'access-control-allow-methods': response.headers.get('access-control-allow-methods'),
+                    'access-control-allow-headers': response.headers.get('access-control-allow-headers'),
+                    'access-control-allow-credentials': response.headers.get('access-control-allow-credentials')
+                };
+                
+                log(`Preflight Response Headers:<pre>${JSON.stringify(corsHeaders, null, 2)}</pre>`, 
+                    corsHeaders['access-control-allow-origin'] ? 'success' : 'warning');
+                
+                if (!corsHeaders['access-control-allow-origin']) {
+                    log('⚠️ Missing Access-Control-Allow-Origin header in preflight response!', 'error');
+                }
+            } catch (error) {
+                log(`❌ Preflight request failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testWithXHR() {
+            log('<h3>Test 4: XMLHttpRequest (Legacy)</h3>');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `${API_URL}/stats`, true);
+            xhr.setRequestHeader('X-API-Key', API_KEY);
+            xhr.withCredentials = true;
+            
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    log(`✅ XHR successful! Response:<pre>${xhr.responseText}</pre>`, 'success');
+                    log(`Response Headers:<pre>${xhr.getAllResponseHeaders()}</pre>`, 'info');
+                } else {
+                    log(`❌ XHR failed with status: ${xhr.status}`, 'error');
+                }
+            };
+            
+            xhr.onerror = function() {
+                log('❌ XHR network error (likely CORS)', 'error');
+            };
+            
+            try {
+                xhr.send();
+            } catch (error) {
+                log(`❌ XHR send failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkDeploymentStatus() {
+            log('<h3>Test 5: Check Which API Version is Running</h3>');
+            try {
+                // Try to detect which version is running
+                const response = await fetch(`${API_URL}/`, { mode: 'no-cors' });
+                log('Checking API version... (see browser console for details)', 'info');
+                
+                // Make a request to see if test endpoint exists (only in simple_main.py)
+                fetch(`${API_URL}/test`, {
+                    headers: { 'X-API-Key': API_KEY }
+                }).then(r => {
+                    if (r.ok) {
+                        log('⚠️ API is running simple_main.py (has /test endpoint)', 'warning');
+                        log('simple_main.py has hardcoded CORS that doesn\'t include tco-laugh.vercel.app!', 'error');
+                    }
+                }).catch(() => {
+                    log('API might be running main.py (no /test endpoint)', 'info');
+                });
+                
+            } catch (error) {
+                log(`Could not determine API version: ${error.message}`, 'warning');
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            log('<h2>🔬 Starting CORS Debug Tests...</h2>');
+            log(`Testing from origin: <span class="info">${window.location.origin}</span>`);
+            log('Open browser console (F12) for detailed error messages!', 'warning');
+            
+            await testBasicFetch();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await testCORSFetch();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await testPreflightRequest();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await testWithXHR();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await checkDeploymentStatus();
+            
+            log('<h2>📊 Test Complete - Check results above</h2>');
+            log(`<b>Most likely issue:</b> The API is still running simple_main.py which has hardcoded CORS origins 
+                 that don't include tco-laugh.vercel.app. The new deployment needs to complete to switch to main.py.`, 'warning');
+        }
+        
+        // Auto-run tests on load
+        window.onload = () => {
+            setTimeout(runAllTests, 1000);
+        };
+    </script>
+</body>
+</html>
