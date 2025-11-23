@@ -35,6 +35,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         self._rate_counters: Dict[str, Dict[str, float]] = {}
 
     async def dispatch(self, request: Request, call_next):
+        if request.method == "OPTIONS":
+            return await call_next(request)
         client_ip = getattr(request.client, "host", "unknown")
         # 1. Auth Check (API Key from Env)
         if not self._is_public_path(request.url.path):
