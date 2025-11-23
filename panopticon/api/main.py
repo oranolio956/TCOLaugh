@@ -267,8 +267,10 @@ async def search_person(query: PersonSearchRequest):
 async def ingest_stealer_logs(file: UploadFile = File(...)):
     """
     Ingests a ZIP file containing 'system_info.txt' and 'passwords.txt'.
+    Offloads processing to a background task.
     """
     import zipfile
+    import shutil
     
     try:
         contents = await file.read()
@@ -276,36 +278,27 @@ async def ingest_stealer_logs(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="Empty file.")
             
         safe_name = _sanitize_filename(file.filename)
-        temp_dir = Path(tempfile.mkdtemp(prefix="panopticon_stealer_"))
-        zip_path = temp_dir / safe_name
+        # We need a persistent temp location shared with workers if they are separate processes
+        # For this setup (local), /tmp is fine.
+        temp_dir = Path("/tmp/panopticon_ingest")
+        temp_dir.mkdir(exist_ok=True)
+        
+        task_id = secrets.token_hex(8)
+        job_dir = temp_dir / task_id
+        job_dir.mkdir()
+        
+        zip_path = job_dir / safe_name
         zip_path.write_bytes(contents)
         
-        extracted_path = temp_dir / "extracted"
-        extracted_path.mkdir()
-        
-        try:
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extracted_path)
-                
-            # Recursively find folder with system_info.txt
-            log_dir = extracted_path
-            for root, dirs, files in os.walk(extracted_path):
-                if "system_info.txt" in files or "passwords.txt" in files:
-                    log_dir = Path(root)
-                    break
+        # Trigger Background Task
+        # In a real cluster, we'd pass the S3 URL. Here we pass the local path.
+        from panopticon.worker import process_stealer_task
+        process_stealer_task.delay(str(zip_path), str(job_dir))
             
-            result = stealer_parser.process_log_directory(str(log_dir))
-            return {"status": "ingested", "details": result}
-            
-        except zipfile.BadZipFile:
-            raise HTTPException(status_code=400, detail="Invalid zip file.")
-            
-        finally:
-            import shutil
-            shutil.rmtree(temp_dir, ignore_errors=True)
+        return {"status": "accepted", "task_id": task_id, "message": "Processing started in background."}
             
     except Exception as e:
-        logger.error(f"Stealer ingestion failed: {e}")
+        logger.error(f"Stealer ingestion queue failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

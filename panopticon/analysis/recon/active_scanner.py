@@ -8,8 +8,30 @@ import httpx
 logger = logging.getLogger(__name__)
 
 
+class ProxyManager:
+    """
+    Manages a list of rotating proxies.
+    """
+    def __init__(self, proxy_list_path: str = "proxies.txt"):
+        self.proxies = []
+        if os.path.exists(proxy_list_path):
+            with open(proxy_list_path, 'r') as f:
+                self.proxies = [line.strip() for line in f if line.strip()]
+        else:
+            # Fallback env var or default empty
+            env_proxies = os.environ.get("PANOPTICON_PROXIES", "")
+            if env_proxies:
+                self.proxies = [p.strip() for p in env_proxies.split(",")]
+
+    def get_proxy(self) -> Optional[str]:
+        if not self.proxies:
+            return None
+        import random
+        return random.choice(self.proxies)
+
 class ActiveScanner:
     def __init__(self, timeout: Optional[float] = None):
+        self.proxy_manager = ProxyManager()
         # List of sites to check for usernames
         # Note: Some sites might require specific headers or handling to avoid false positives.
         # This implementation assumes 200 OK means "found" and 404 means "not found".
@@ -61,7 +83,22 @@ class ActiveScanner:
         self, client: httpx.AsyncClient, site: str, url: str, label: str
     ) -> Optional[Dict[str, str]]:
         try:
-            response = await client.get(url, headers=self.headers)
+            # Get rotation proxy
+            proxy = self.proxy_manager.get_proxy()
+            # If proxies are available, we might need a new client per request or mount proxies
+            # Since we reuse the client passed in, this is tricky.
+            # Best practice: use a fresh client for proxied requests or configure client with proxy
+            
+            # Simple implementation: if proxy, create specific client for this request (slower but safer)
+            # OR assume the main client is configured with a rotating proxy gateway.
+            
+            # Here we demonstrate per-request proxy usage if available
+            if proxy:
+                async with httpx.AsyncClient(proxies=proxy, timeout=self.timeout, follow_redirects=True) as proxy_client:
+                    response = await proxy_client.get(url, headers=self.headers)
+            else:
+                 response = await client.get(url, headers=self.headers)
+
             
             # Site specific logic
             if site == "Reddit":
