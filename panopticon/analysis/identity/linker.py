@@ -155,7 +155,12 @@ class IdentityLinker:
             result = df.merge(clusters_pdf, on="unique_id", how="left")
             
             # Convert back to list of dicts
-            return result.to_dict(orient="records")
+            results = result.to_dict(orient="records")
+            for r in results:
+                r["match_type"] = "probabilistic"
+                r["match_confidence"] = 0.9 # The threshold we used
+                r["resolution_engine"] = "Splink (Fellegi-Sunter)"
+            return results
             
         except Exception as e:
             logger.error(f"Splink resolution failed: {e}. Fallback to simple.")
@@ -192,6 +197,9 @@ class IdentityLinker:
             if user: user_map[user] = cid
             
             row["cluster_id"] = cid
+            row["match_type"] = "deterministic"
+            row["match_confidence"] = 1.0
+            row["resolution_engine"] = "Exact Match"
             
         return result
 

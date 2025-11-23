@@ -202,10 +202,19 @@ async def search_person(query: PersonSearchRequest):
     # 1.5 Legacy/Direct Search (if linker didn't handle it all)
     if query.email:
         docs = _safe_document_search("email", query.email)
+        # Add explanation to raw docs
+        for d in docs:
+            d["match_type"] = "exact"
+            d["match_confidence"] = 1.0
+            d["resolution_engine"] = "Exact Lookup"
         _add_matches(docs, "breach_record")
 
     if query.username:
         docs = _safe_document_search("username", query.username)
+        for d in docs:
+            d["match_type"] = "exact"
+            d["match_confidence"] = 1.0
+            d["resolution_engine"] = "Exact Lookup"
         _add_matches(docs, "social_profile")
 
     # 2. Graph Traversal
@@ -224,7 +233,11 @@ async def search_person(query: PersonSearchRequest):
             public_results = web_searcher.search_public(target, num_results=5)
             # Add to results as "public_web"
             for url in public_results:
-                results.append({"type": "public_web", "data": {"url": url, "query": target}})
+                results.append({
+                    "type": "public_web", 
+                    "data": {"url": url, "query": target},
+                    "match_explanation": f"Matched public web search query: '{target}'"
+                })
 
     # 3. Enrichment (Geo & Health)
     locations = []
