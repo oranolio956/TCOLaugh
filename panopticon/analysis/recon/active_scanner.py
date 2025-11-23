@@ -31,7 +31,9 @@ class ProxyManager:
 
 class ActiveScanner:
     def __init__(self, timeout: Optional[float] = None):
+        from panopticon.analysis.recon.headless_scanner import HeadlessScanner
         self.proxy_manager = ProxyManager()
+        self.headless_scanner = HeadlessScanner()
         # List of sites to check for usernames
         # Note: Some sites might require specific headers or handling to avoid false positives.
         # This implementation assumes 200 OK means "found" and 404 means "not found".
@@ -106,14 +108,26 @@ class ActiveScanner:
                 # But usually 404 if user doesn't exist.
                 pass 
             elif site == "Instagram":
-                if "Login" in response.text or response.status_code == 302:
-                     # Often redirects to login, treating as "Unknown" or ignoring
-                     return None
+                # Instagram often redirects to login or requires JS
+                # If simple GET fails/redirects, try headless
+                if "Login" in response.text or response.status_code in [302, 429, 403]:
+                    logger.info(f"Fast scan failed for {site}. Retrying with Headless Scanner...")
+                    headless_res = await self.headless_scanner.scan_profile(url)
+                    if headless_res.get("exists"):
+                        return {"site": site, "url": url, "status": "found", "method": "headless"}
+                    return None
 
             if response.status_code == 200:
                 return {"site": site, "url": str(response.url), "status": "found"}
         except Exception as exc:
-            # logger.warning("Error checking %s: %s", site, exc)
+            # Fallback to headless for specific sites if connection failed (e.g. TLS fingerprint block)
+            if site in ["Instagram", "Twitter"]:
+                 try:
+                     headless_res = await self.headless_scanner.scan_profile(url)
+                     if headless_res.get("exists"):
+                        return {"site": site, "url": url, "status": "found", "method": "headless"}
+                 except:
+                     pass
             pass
         return None
 

@@ -315,6 +315,28 @@ async def ingest_stealer_logs(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/tasks/{task_id}")
+async def get_task_status(task_id: str):
+    """
+    Check status of a background task (e.g. stealer ingestion).
+    """
+    # In a full Celery setup, we would use AsyncResult(task_id).
+    # Since we are using a simplified worker dispatch in this environment, 
+    # we check if the job directory exists or has a 'done' marker.
+    
+    # Check simplified temp dir status
+    temp_dir = Path("/tmp/panopticon_ingest") / task_id
+    if not temp_dir.exists():
+        # Might be cleaned up (completed) or invalid
+        # In a real system, we'd query a job db.
+        # For now, we assume if it's gone, it's done (optimistic) or never existed.
+        # A better approach for this MVP is to check if we can find the ingestion record in Audit logs?
+        # Or just return "unknown/completed".
+        return {"task_id": task_id, "status": "completed_or_unknown"}
+        
+    # If dir exists, it's processing or failed
+    return {"task_id": task_id, "status": "processing"}
+
 @app.get("/search/pivot")
 async def search_pivot(type: str, value: str):
     """
@@ -424,6 +446,32 @@ async def active_recon(request: ReconRequest):
 
     return {"username": request.username, "found_on": hits}
 
+
+@app.post("/crawl/visual")
+async def crawl_visual(url: str):
+    """
+    Trigger the Visual Crawler on a specific URL to harvest faces.
+    Uses Playwright + FaceEngine.
+    """
+    # In production, this should be a background task.
+    # For now, we run it async but it might block long requests if not workerized.
+    # Given the architecture, we should ideally use the worker.
+    # Let's dispatch to worker.py's generic runner or add a new task.
+    
+    # Since worker.py doesn't have a visual_crawl task explicitly exposed,
+    # we will add a simple wrapper here or trigger via Celery 'send_task' if dynamic.
+    # Best approach: Add task to worker.py (requires edit) OR run inline for demo.
+    # Running inline for immediate feedback in this environment.
+    
+    from panopticon.ingestion.crawlers.visual_crawler import VisualCrawler
+    crawler = VisualCrawler()
+    
+    try:
+        count = await crawler.crawl_and_index(url)
+        return {"status": "completed", "url": url, "faces_indexed": count}
+    except Exception as e:
+        logger.error(f"Visual crawl failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest/record")
 async def ingest_record(record: IngestRecord):

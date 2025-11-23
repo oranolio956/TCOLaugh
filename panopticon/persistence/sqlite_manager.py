@@ -219,6 +219,10 @@ class PolyglotStore:
 
     # --- Graph Operations ---
     def add_node(self, uid: str, node_type: str, properties: Dict[str, Any]):
+        # Ensure creation timestamp
+        if "created_at" not in properties:
+            properties["created_at"] = time.time()
+            
         # 1. Neo4j
         if self.neo4j:
             try:
@@ -238,6 +242,10 @@ class PolyglotStore:
     def add_edge(
         self, source: str, target: str, edge_type: str, properties: Dict[str, Any] = {}
     ):
+        # Ensure creation timestamp
+        if "created_at" not in properties:
+            properties["created_at"] = time.time()
+
         # 1. Neo4j
         if self.neo4j:
             try:
