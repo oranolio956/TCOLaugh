@@ -19,14 +19,15 @@
             </div>
             <div class="text-right text-xs text-slate-600">
                 System: ONLINE<br>
-                Security: ENFORCED
+                Security: ENFORCED<br>
+                <span id="auto-login-status" class="text-emerald-400">🔐 Auto-Login Active</span>
             </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <!-- Connection Panel -->
-            <div class="bg-slate-800 p-4 rounded shadow md:col-span-3">
+            <!-- Connection Panel (Hidden by Auto-Login) -->
+            <div id="connection-panel" class="bg-slate-800 p-4 rounded shadow md:col-span-3" style="display: none;">
                 <h2 class="text-xl font-semibold mb-4 text-emerald-400">Connection Settings</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
@@ -113,6 +114,13 @@
     <script>
         const DEFAULT_BASE_URL = window.location.origin;
         const CONFIG_STORAGE_KEY = "panopticonBaseUrl";
+        
+        // AUTO-LOGIN CONFIGURATION
+        const AUTO_CONFIG = {
+            baseUrl: "https://panopticon-api-847835.onrender.com",
+            apiKey: "pano_bb0712a94164f6df7e4a4741348955bf_2024"
+        };
+        
         let clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
         let statsIntervalId = null;
 
@@ -125,8 +133,20 @@
         let markers = [];
 
         document.addEventListener("DOMContentLoaded", () => {
-            loadStoredBaseUrl();
-            hydrateConfigForm();
+            // AUTO-LOGIN: Automatically configure and connect
+            clientConfig = AUTO_CONFIG;
+            persistBaseUrl(AUTO_CONFIG.baseUrl);
+            
+            // Connection panel is already hidden via inline style
+            
+            // Update form fields with auto-config (in case user wants to see them)
+            document.getElementById('config-base-url').value = AUTO_CONFIG.baseUrl;
+            document.getElementById('config-api-key').value = AUTO_CONFIG.apiKey;
+            
+            // Show connected status
+            updateConfigStatus(`Auto-connected to ${AUTO_CONFIG.baseUrl}`, false);
+            
+            // Start refreshing stats immediately
             refreshStats();
             scheduleStats();
         });
