@@ -14,6 +14,9 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 from panopticon.analysis.recon.detection_engine import DetectionEngine
+# Enhanced detection is now the default
+USE_ENHANCED_DETECTION = True
+EnhancedDetectionEngine = DetectionEngine
 from panopticon.analysis.recon.platform_database import PlatformDatabase, PlatformDefinition
 
 logger = logging.getLogger(__name__)
@@ -237,18 +240,33 @@ class ActiveScanner:
             # Get final URL after redirects
             final_url = str(response.url)
             
-            # Detect using intelligent engine
-            detection_result = DetectionEngine.detect(
-                platform,
-                response.status_code,
-                response.text,
-                url,
-                final_url
-            )
+            # Track response time (if available from response metadata)
+            response_time = getattr(response, 'elapsed', None)
+            if response_time:
+                response_time = response_time.total_seconds()
+            
+            # Detect using intelligent engine (enhanced if available)
+            if USE_ENHANCED_DETECTION:
+                detection_result = EnhancedDetectionEngine.detect_enhanced(
+                    platform,
+                    response.status_code,
+                    response.text,
+                    url,
+                    final_url,
+                    response_time=response_time
+                )
+            else:
+                detection_result = DetectionEngine.detect(
+                    platform,
+                    response.status_code,
+                    response.text,
+                    url,
+                    final_url
+                )
             
             # Only return if username was found
             if detection_result.found:
-                return {
+                result = {
                     "site": platform.name,
                     "url": final_url,
                     "status": "found",
@@ -257,6 +275,12 @@ class ActiveScanner:
                     "details": detection_result.details,
                     "status_code": response.status_code
                 }
+                # Add enhanced metadata if available
+                if USE_ENHANCED_DETECTION and hasattr(detection_result, 'methods_used'):
+                    result["methods_used"] = detection_result.methods_used
+                if response_time:
+                    result["response_time_ms"] = round(response_time * 1000, 2)
+                return result
             
             return None
         
