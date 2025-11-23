@@ -1,0 +1,142 @@
+[
+  {
+    "platform": "1337x",
+    "username": "FitGirl",
+    "url": "https://www.1337x.to/user/FitGirl/",
+    "status_code": 403,
+    "final_url": "https://www.1337x.to/user/FitGirl/",
+    "detection": {
+      "found": true,
+      "confidence": 0.85,
+      "method": "message",
+      "details": "No error messages found in response"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "2Dimensions",
+    "username": "blue",
+    "url": "https://2Dimensions.com/a/blue",
+    "status_code": 404,
+    "final_url": "https://rive.app/a/blue",
+    "detection": {
+      "found": false,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 404 matches error codes [404]"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "7Cups",
+    "username": "blue",
+    "url": "https://www.7cups.com/@blue",
+    "status_code": 200,
+    "final_url": "https://www.7cups.com/@blue",
+    "detection": {
+      "found": true,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 200 and not in error codes [404]"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "9GAG",
+    "username": "blue",
+    "url": "https://www.9gag.com/u/blue",
+    "status_code": 403,
+    "final_url": "https://9gag.com/u/blue",
+    "detection": {
+      "found": false,
+      "confidence": 0.5,
+      "method": "default_error",
+      "details": "Status 403 and no specific detection method matched"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "APClips",
+    "username": "onlybbyraq",
+    "url": "https://apclips.com/onlybbyraq",
+    "status_code": 403,
+    "final_url": "https://apclips.com/onlybbyraq",
+    "detection": {
+      "found": true,
+      "confidence": 0.85,
+      "method": "message",
+      "details": "No error messages found in response"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "About.me",
+    "username": "blue",
+    "url": "https://about.me/blue",
+    "status_code": 200,
+    "final_url": "https://about.me/blue",
+    "detection": {
+      "found": true,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 200 and not in error codes [404]"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "Academia.edu",
+    "username": "blue",
+    "url": "https://independent.academia.edu/blue",
+    "status_code": 200,
+    "final_url": "https://independent.academia.edu/blue",
+    "detection": {
+      "found": true,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 200 and not in error codes [404]"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "AdmireMe.Vip",
+    "username": "DemiDevil",
+    "url": "https://admireme.vip/DemiDevil",
+    "status_code": 200,
+    "final_url": "https://admireme.vip/DemiDevil/",
+    "detection": {
+      "found": true,
+      "confidence": 0.85,
+      "method": "message",
+      "details": "No error messages found in response"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "Airbit",
+    "username": "airbit",
+    "url": "https://airbit.com/airbit",
+    "status_code": 200,
+    "final_url": "https://airbit.com/airbit",
+    "detection": {
+      "found": true,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 200 and not in error codes [404]"
+    },
+    "status": "SUCCESS"
+  },
+  {
+    "platform": "Airliners",
+    "username": "yushinlin",
+    "url": "https://www.airliners.net/user/yushinlin/profile/photos",
+    "status_code": 200,
+    "final_url": "https://www.airliners.net/user/yushinlin/profile/photos",
+    "detection": {
+      "found": true,
+      "confidence": 0.9,
+      "method": "status_code",
+      "details": "Status 200 and not in error codes [404]"
+    },
+    "status": "SUCCESS"
+  }
+]
