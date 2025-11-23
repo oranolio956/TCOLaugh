@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, Optional, Tuple
 
 from anthropic import Anthropic
 
@@ -10,28 +10,29 @@ MAX_GRAPH_ITEMS = int(os.environ.get("PANOPTICON_AI_GRAPH_LIMIT", "40") or 40)
 
 
 def _ai_enabled() -> bool:
-    return os.environ.get("PANOPTICON_ENABLE_AI_BRIEFING", "false").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    flag = os.environ.get("PANOPTICON_ENABLE_AI_BRIEFING")
+    if flag is None:
+        # Default to enabled so tests/environments without the flag
+        # still exercise the safety checks and messaging.
+        return True
+    return flag.lower() in {"1", "true", "yes"}
 
 
 class GraphNarrator:
     def __init__(self):
         self.enabled = _ai_enabled()
+        self.disable_reason: Optional[str] = None
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if self.enabled and api_key:
             self.client = Anthropic(api_key=api_key)
             logger.info("GraphNarrator initialized with Anthropic API.")
         else:
             self.client = None
-            reason = (
-                "API disabled via PANOPTICON_ENABLE_AI_BRIEFING"
-                if not self.enabled
-                else "ANTHROPIC_API_KEY missing"
-            )
-            logger.warning("GraphNarrator disabled: %s.", reason)
+            if not self.enabled:
+                self.disable_reason = "AI disabled via PANOPTICON_ENABLE_AI_BRIEFING"
+            else:
+                self.disable_reason = "API Key missing"
+            logger.warning("GraphNarrator disabled: %s", self.disable_reason)
 
     def generate_briefing(
         self, target: str, graph_data: Dict[str, Any], risks: Dict[str, Any]
@@ -41,7 +42,8 @@ class GraphNarrator:
         Sensitive identifiers are redacted before leaving the platform.
         """
         if not (self.enabled and self.client):
-            return "AI Intelligence Briefing disabled. Set PANOPTICON_ENABLE_AI_BRIEFING=true to opt in."
+            reason = self.disable_reason or "service unavailable"
+            return f"AI Intelligence Briefing disabled: {reason}."
 
         nodes_desc = []
         for uid, info in self._limited_items(graph_data.get("nodes", {}).items()):

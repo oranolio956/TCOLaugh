@@ -166,7 +166,8 @@ class PolyglotStore:
 
         with self.get_connection() as conn:
             cur = conn.cursor()
-            if normalized_key in INDEXED_FIELDS:
+            is_indexed = normalized_key in INDEXED_FIELDS
+            if is_indexed:
                 cur.execute(
                     """
                 SELECT d.data
@@ -179,6 +180,10 @@ class PolyglotStore:
                 rows = cur.fetchall()
                 if rows:
                     return [json.loads(payload) for (payload,) in rows]
+
+            if is_indexed:
+                # Key is indexed but there were no matches; returning early avoids hard failures
+                return []
 
             if not allow_full_scan:
                 raise ValueError(
