@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from panopticon.analysis.intelligence import BreachAnalyzer, GeoIP
 from panopticon.analysis.narrative.graph_rag import GraphNarrator
 from panopticon.analysis.recon.active_scanner import ActiveScanner
+from panopticon.analysis.recon.web_search import WebSearch
 from panopticon.analysis.visual.face_engine import FaceEngine
 from panopticon.api.security import SecurityMiddleware
 from panopticon.ingestion.kafka_interface import persist_record as persist_ingestion_record
@@ -59,6 +60,7 @@ app.add_middleware(SecurityMiddleware)
 
 # Initialize services
 scanner = ActiveScanner()
+web_searcher = WebSearch()
 face_engine = FaceEngine()
 narrator = GraphNarrator()
 
@@ -74,6 +76,7 @@ class PersonSearchRequest(BaseModel):
     email: Optional[str] = None
     username: Optional[str] = None
     phone: Optional[str] = None
+    include_public_search: bool = False
 
 
 class ReconRequest(BaseModel):
@@ -184,6 +187,17 @@ async def search_person(query: PersonSearchRequest):
     elif query.username:
         graph_context = db_instance.get_subgraph(f"user:{query.username}", depth=2)
 
+    # 2.5 Public Web Search (Real-time)
+    public_results = []
+    if query.include_public_search:
+        target = query.name or query.email or query.username
+        if target:
+            logger.info(f"Performing public web search for {target}")
+            public_results = web_searcher.search_public(target, num_results=5)
+            # Add to results as "public_web"
+            for url in public_results:
+                results.append({"type": "public_web", "data": {"url": url, "query": target}})
+
     # 3. Enrichment (Geo & Health)
     locations = []
     password_analysis = {}
@@ -279,6 +293,21 @@ async def active_recon(request: ReconRequest):
     db_instance.add_document(
         doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
     )
+    
+    # Update Graph
+    if hits:
+        user_uid = f"user:{request.username}"
+        db_instance.add_node(user_uid, "Identity", {"username": request.username, "source": "recon"})
+        
+        for hit in hits:
+            site_name = hit.get("site", "Unknown")
+            site_url = hit.get("url", "")
+            
+            site_uid = f"site:{site_name}"
+            db_instance.add_node(site_uid, "Site", {"name": site_name})
+            
+            db_instance.add_edge(user_uid, site_uid, "HAS_ACCOUNT", {"url": site_url})
+
     return {"username": request.username, "found_on": hits}
 
 
