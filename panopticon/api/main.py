@@ -23,7 +23,7 @@ from panopticon.ingestion.stealer_logs import StealerLogParser
 from panopticon.api.security import SecurityMiddleware
 from panopticon.ingestion.kafka_interface import persist_record as persist_ingestion_record
 from panopticon.persistence.sqlite_manager import db_instance
-from panopticon.persistence.vector.milvus_manager import MilvusManager
+from panopticon.persistence.vector.router import vector_router
 
 app = FastAPI(
     title="Panopticon API", description="Identity Resolution Platform Interface"
@@ -31,7 +31,7 @@ app = FastAPI(
 logger = logging.getLogger("uvicorn")
 MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
 MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
-milvus_index = MilvusManager()
+# milvus_index = MilvusManager() # Deprecated, use router
 DASHBOARD_DEFAULT_BASE_URL = os.environ.get("PANOPTICON_DASHBOARD_BASE_URL")
 DASHBOARD_DEFAULT_API_KEY = os.environ.get("PANOPTICON_DASHBOARD_API_KEY")
 DEFAULT_CORS_ORIGINS = [
@@ -429,8 +429,4 @@ async def ingest_record(record: IngestRecord):
 
 
 def _search_vectors(embedding: np.ndarray) -> List[Dict[str, Any]]:
-    if milvus_index.collection:
-        matches = milvus_index.search_vectors(embedding)
-        if matches:
-            return matches
-    return db_instance.search_vectors(embedding)
+    return vector_router.search_vectors(embedding)

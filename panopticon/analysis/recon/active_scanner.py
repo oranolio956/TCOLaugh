@@ -82,17 +82,48 @@ class ActiveScanner:
 
     def hlr_lookup(self, phone_number: str) -> Dict[str, Any]:
         """
-        Simulates an HLR (Home Location Register) lookup for a phone number.
+        Simulates an HLR (Home Location Register) lookup using libphonenumbers.
         """
         logger.info(f"Performing HLR lookup for {phone_number}...")
-        # In reality, this calls a paid API like Twilio or HLR-Lookups.com
-        # Since we don't have a paid API key, we mock this part but realistically.
-        # We can at least validate the number format and guess carrier via prefixes (mocked here).
         
-        return {
-            "number": phone_number,
-            "status": "active",
-            "carrier": "Unknown Carrier (Requires Paid API)",
-            "country_code": "US", # Assumption
-            "roaming": False,
-        }
+        try:
+            import phonenumbers
+            from phonenumbers import geocoder, carrier, timezone
+            
+            # Parse number
+            try:
+                # Assume US default if no + prefix, but best to require +
+                parsed = phonenumbers.parse(phone_number, "US") 
+            except phonenumbers.NumberParseException:
+                return {"error": "Invalid format", "number": phone_number}
+
+            if not phonenumbers.is_valid_number(parsed):
+                 return {"status": "invalid", "number": phone_number}
+
+            # Extract details
+            region_code = phonenumbers.region_code_for_number(parsed)
+            carrier_name = carrier.name_for_number(parsed, "en")
+            location_desc = geocoder.description_for_number(parsed, "en")
+            time_zones = timezone.time_zones_for_number(parsed)
+            
+            return {
+                "number": phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164),
+                "status": "valid",
+                "valid": True,
+                "region_code": region_code,
+                "carrier": carrier_name or "Unknown/Fixed Line",
+                "location": location_desc,
+                "timezones": list(time_zones),
+                "type": "mobile" if phonenumbers.number_type(parsed) == phonenumbers.PhoneNumberType.MOBILE else "fixed/other"
+            }
+
+        except ImportError:
+            logger.warning("phonenumbers library not installed.")
+            # Fallback
+            return {
+                "number": phone_number,
+                "status": "active",
+                "carrier": "Unknown (Install phonenumbers lib)",
+                "country_code": "US", # Assumption
+                "roaming": False,
+            }

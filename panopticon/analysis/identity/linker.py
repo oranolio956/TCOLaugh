@@ -62,7 +62,73 @@ class IdentityLinker:
                     block_on("phone"),
                 ],
                 "comparisons": [
-                     # Simple comparisons for now
+                    {
+                        "output_column_name": "email",
+                        "comparison_levels": [
+                            {
+                                "sql_condition": "email_l IS NULL OR email_r IS NULL",
+                                "label_for_charts": "Null",
+                                "is_null_level": True
+                            },
+                            {
+                                "sql_condition": "email_l = email_r",
+                                "label_for_charts": "Exact match",
+                                "m_probability": 0.9,
+                                "u_probability": 0.01
+                            },
+                            {
+                                "sql_condition": "ELSE",
+                                "label_for_charts": "All other comparisons",
+                                "m_probability": 0.1,
+                                "u_probability": 0.99
+                            }
+                        ],
+                        "comparison_description": "Exact match vs. anything else"
+                    },
+                    {
+                        "output_column_name": "username",
+                        "comparison_levels": [
+                            {
+                                "sql_condition": "username_l IS NULL OR username_r IS NULL",
+                                "label_for_charts": "Null",
+                                "is_null_level": True
+                            },
+                            {
+                                "sql_condition": "username_l = username_r",
+                                "label_for_charts": "Exact match",
+                                "m_probability": 0.9,
+                                "u_probability": 0.01
+                            },
+                            {
+                                "sql_condition": "ELSE",
+                                "label_for_charts": "All other comparisons",
+                                "m_probability": 0.1,
+                                "u_probability": 0.99
+                            }
+                        ]
+                    },
+                     {
+                        "output_column_name": "phone",
+                        "comparison_levels": [
+                            {
+                                "sql_condition": "phone_l IS NULL OR phone_r IS NULL",
+                                "label_for_charts": "Null",
+                                "is_null_level": True
+                            },
+                            {
+                                "sql_condition": "phone_l = phone_r",
+                                "label_for_charts": "Exact match",
+                                "m_probability": 0.9,
+                                "u_probability": 0.01
+                            },
+                            {
+                                "sql_condition": "ELSE",
+                                "label_for_charts": "All other comparisons",
+                                "m_probability": 0.1,
+                                "u_probability": 0.99
+                            }
+                        ]
+                    }
                 ],
                 "retain_matching_columns": True,
                 "retain_intermediate_calculation_columns": False,
@@ -79,7 +145,14 @@ class IdentityLinker:
             
             # Merge back
             # df_clusters has 'unique_id' and 'cluster_id'
-            result = df.merge(df_clusters.to_pandas(), on="unique_id", how="left")
+            # Convert Splink DataFrame to Pandas
+            try:
+                clusters_pdf = df_clusters.as_pandas_dataframe()
+            except AttributeError:
+                 # Try older/other method if as_pandas_dataframe fails
+                clusters_pdf = df_clusters.to_pandas()
+
+            result = df.merge(clusters_pdf, on="unique_id", how="left")
             
             # Convert back to list of dicts
             return result.to_dict(orient="records")
