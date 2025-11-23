@@ -7,7 +7,7 @@ services:
     startCommand: uvicorn panopticon.api.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.9"
+        value: "3.9.18"
       - key: PANOPTICON_API_KEY
         value: REPLACE_WITH_RENDER_SECRET
       - key: PANOPTICON_ENABLE_AI_BRIEFING
@@ -51,7 +51,7 @@ services:
     startCommand: celery -A panopticon.worker worker --loglevel=info
     envVars:
       - key: PYTHON_VERSION
-        value: "3.9"
+        value: "3.9.18"
       - key: REDIS_URL
         value: redis://localhost:6379
       - key: NEO4J_URI
@@ -75,7 +75,7 @@ services:
     startCommand: python3 panopticon/ingestion/crawlers/mock_crawler.py --continuous --delay 30
     envVars:
       - key: PYTHON_VERSION
-        value: "3.9"
+        value: "3.9.18"
       - key: PANOPTICON_USE_KAFKA
         value: "false"
       - key: PANOPTICON_API_BASE_URL
