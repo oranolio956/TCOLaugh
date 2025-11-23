@@ -47,13 +47,13 @@ def _get_visual_resources():
 
             from panopticon.analysis.intel_extractor import IntelExtractor
             from panopticon.analysis.visual.face_engine import FaceEngine
-            from panopticon.persistence.vector.milvus_manager import MilvusManager
+            from panopticon.persistence.vector.router import vector_router
 
             _visual_bundle = {
                 "np": np,
                 "extractor": IntelExtractor(),
                 "face_engine": FaceEngine(),
-                "milvus": MilvusManager(),
+                "router": vector_router,
             }
     return _visual_bundle
 
@@ -95,6 +95,46 @@ def process_ingestion_task(record: Dict[str, Any]):
 
 
 @app.task
+def process_stealer_task(zip_path: str, job_dir: str):
+    """
+    Background task to unzip and parse stealer logs.
+    """
+    import zipfile
+    import shutil
+    import os
+    from pathlib import Path
+    from panopticon.ingestion.stealer_logs import StealerLogParser
+    
+    logger.info(f"Processing Stealer Task: {zip_path}")
+    parser = StealerLogParser()
+    
+    try:
+        extracted_path = Path(job_dir) / "extracted"
+        extracted_path.mkdir(exist_ok=True)
+        
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(extracted_path)
+            
+        # Find directory
+        log_dir = extracted_path
+        for root, dirs, files in os.walk(extracted_path):
+            if "system_info.txt" in files or "passwords.txt" in files:
+                log_dir = Path(root)
+                break
+                
+        result = parser.process_log_directory(str(log_dir))
+        logger.info(f"Stealer Task Completed: Ingested {result['credential_count']} credentials.")
+        
+    except Exception as e:
+        logger.error(f"Stealer Task Failed: {e}")
+    finally:
+        # Cleanup
+        try:
+            shutil.rmtree(job_dir)
+        except:
+            pass
+
+@app.task
 def process_visual_task(image_path: str):
     """
     Background task for heavy visual processing (Face Rec + OCR).
@@ -103,7 +143,7 @@ def process_visual_task(image_path: str):
     np = resources["np"]
     extractor = resources["extractor"]
     face_engine = resources["face_engine"]
-    milvus = resources["milvus"]
+    router = resources["router"]
 
     logger.info(f"Processing visual task: {image_path}")
 
@@ -114,7 +154,7 @@ def process_visual_task(image_path: str):
         results = face_engine.process_image(image_path)
         for res in results:
             vector = np.array(res["embedding"], dtype=np.float32)
-            milvus.add_vector(vector, f"img_{image_path}", {"ocr_text": text})
+            router.add_vector(vector, f"img_{image_path}", {"ocr_text": text})
 
     except Exception as e:
         logger.error(f"Visual task failed: {e}")

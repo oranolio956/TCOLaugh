@@ -26,7 +26,7 @@ PURGE_INTERVAL_SECONDS = int(os.environ.get("PANOPTICON_PURGE_INTERVAL", "60") o
 
 class PolyglotStore:
     """
-    SQLite-backed polyglot simulator with lightweight indexing and vector caching.
+    SQLite-backed polyglot simulator with optional Neo4j connectivity.
     """
 
     def __init__(self, db_path: Optional[str] = None):
@@ -50,6 +50,20 @@ class PolyglotStore:
         self._vector_matrix: Optional[np.ndarray] = None
         self._vector_ids: List[str] = []
         self._vector_metadata: List[Dict[str, Any]] = []
+        
+        # Initialize Schema
+        self._init_sqlite_schema()
+
+        # Neo4j Integration
+        self.neo4j = None
+        if os.environ.get("NEO4J_URI"):
+            from panopticon.persistence.graph.neo4j_manager import Neo4jManager
+            try:
+                self.neo4j = Neo4jManager()
+            except Exception as e:
+                logger.error(f"Neo4j Connection Failed: {e}")
+    
+    def _init_sqlite_schema(self):
         self.setup_schema()
 
     @contextmanager
@@ -205,6 +219,18 @@ class PolyglotStore:
 
     # --- Graph Operations ---
     def add_node(self, uid: str, node_type: str, properties: Dict[str, Any]):
+        # Ensure creation timestamp
+        if "created_at" not in properties:
+            properties["created_at"] = time.time()
+            
+        # 1. Neo4j
+        if self.neo4j:
+            try:
+                self.neo4j.add_node(uid, node_type, properties)
+            except Exception as e:
+                logger.error(f"Neo4j write failed: {e}")
+
+        # 2. SQLite Fallback
         with self._lock:
             with self.get_connection() as conn:
                 conn.execute(
@@ -216,6 +242,18 @@ class PolyglotStore:
     def add_edge(
         self, source: str, target: str, edge_type: str, properties: Dict[str, Any] = {}
     ):
+        # Ensure creation timestamp
+        if "created_at" not in properties:
+            properties["created_at"] = time.time()
+
+        # 1. Neo4j
+        if self.neo4j:
+            try:
+                self.neo4j.add_edge(source, target, edge_type, properties)
+            except Exception as e:
+                logger.error(f"Neo4j edge failed: {e}")
+
+        # 2. SQLite Fallback
         with self._lock:
             with self.get_connection() as conn:
                 conn.execute(
@@ -225,6 +263,14 @@ class PolyglotStore:
                 conn.commit()
 
     def get_subgraph(self, start_uid: str, depth: int = 1) -> Dict[str, Any]:
+        # 1. Neo4j
+        if self.neo4j:
+            try:
+                return self.neo4j.get_subgraph(start_uid, depth)
+            except Exception as e:
+                logger.error(f"Neo4j read failed: {e}")
+
+        # 2. SQLite Fallback
         nodes = {}
         edges: List[Dict[str, Any]] = []
         queue = [(start_uid, 0)]
@@ -236,7 +282,7 @@ class PolyglotStore:
                 if current_uid in visited or current_depth > depth:
                     continue
                 visited.add(current_uid)
-
+                
                 cur = conn.cursor()
                 cur.execute(
                     "SELECT type, properties FROM nodes WHERE uid=?", (current_uid,)
@@ -279,7 +325,7 @@ class PolyglotStore:
                     )
                     if source not in visited:
                         queue.append((source, current_depth + 1))
-
+        
         return {"nodes": nodes, "edges": edges}
 
     # --- Vector Operations ---

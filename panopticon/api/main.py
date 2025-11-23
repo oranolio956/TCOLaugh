@@ -16,11 +16,14 @@ from pydantic import BaseModel
 from panopticon.analysis.intelligence import BreachAnalyzer, GeoIP
 from panopticon.analysis.narrative.graph_rag import GraphNarrator
 from panopticon.analysis.recon.active_scanner import ActiveScanner
+from panopticon.analysis.recon.web_search import WebSearch
 from panopticon.analysis.visual.face_engine import FaceEngine
+from panopticon.analysis.identity.linker import IdentityLinker
+from panopticon.ingestion.stealer_logs import StealerLogParser
 from panopticon.api.security import SecurityMiddleware
 from panopticon.ingestion.kafka_interface import persist_record as persist_ingestion_record
 from panopticon.persistence.sqlite_manager import db_instance
-from panopticon.persistence.vector.milvus_manager import MilvusManager
+from panopticon.persistence.vector.router import vector_router
 
 app = FastAPI(
     title="Panopticon API", description="Identity Resolution Platform Interface"
@@ -28,7 +31,7 @@ app = FastAPI(
 logger = logging.getLogger("uvicorn")
 MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
 MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
-milvus_index = MilvusManager()
+# milvus_index = MilvusManager() # Deprecated, use router
 DASHBOARD_DEFAULT_BASE_URL = os.environ.get("PANOPTICON_DASHBOARD_BASE_URL")
 DASHBOARD_DEFAULT_API_KEY = os.environ.get("PANOPTICON_DASHBOARD_API_KEY")
 DEFAULT_CORS_ORIGINS = [
@@ -59,8 +62,11 @@ app.add_middleware(SecurityMiddleware)
 
 # Initialize services
 scanner = ActiveScanner()
+web_searcher = WebSearch()
 face_engine = FaceEngine()
 narrator = GraphNarrator()
+linker = IdentityLinker()
+stealer_parser = StealerLogParser()
 
 # Setup Templates
 os.makedirs("panopticon/api/templates", exist_ok=True)
@@ -74,6 +80,7 @@ class PersonSearchRequest(BaseModel):
     email: Optional[str] = None
     username: Optional[str] = None
     phone: Optional[str] = None
+    include_public_search: bool = False
 
 
 class ReconRequest(BaseModel):
@@ -153,6 +160,10 @@ async def search_person(query: PersonSearchRequest):
     results: List[Dict[str, Any]] = []
     truncated = False
 
+    # 0. Entity Resolution (Experimental)
+    # If multiple attributes are provided, try to find if they belong to a known cluster
+    # This is a simplification; normally we would run this on the result set
+    
     def _add_matches(records: List[Dict[str, Any]], label: str):
         nonlocal truncated
         if not records:
@@ -169,20 +180,64 @@ async def search_person(query: PersonSearchRequest):
 
     # 1. Document Search (Naive)
     # In future: Async OpenSearch calls here
+    raw_matches = []
+    if query.email:
+        raw_matches.extend(_safe_document_search("email", query.email))
+    if query.username:
+        raw_matches.extend(_safe_document_search("username", query.username))
+        
+    # Run Linker on raw matches to find clusters
+    # This step tries to merge duplicate identities found in the search results
+    if raw_matches:
+        linked_records = linker.resolve_entities(raw_matches)
+        # We might update the graph here with new clusters
+        # linker.sync_to_graph(linked_records)
+        
+        # Add to results
+        _add_matches(linked_records, "linked_identity")
+    else:
+        # Fallback if no local matches, just use whatever we found
+        pass
+
+    # 1.5 Legacy/Direct Search (if linker didn't handle it all)
     if query.email:
         docs = _safe_document_search("email", query.email)
+        # Add explanation to raw docs
+        for d in docs:
+            d["match_type"] = "exact"
+            d["match_confidence"] = 1.0
+            d["resolution_engine"] = "Exact Lookup"
         _add_matches(docs, "breach_record")
 
     if query.username:
         docs = _safe_document_search("username", query.username)
+        for d in docs:
+            d["match_type"] = "exact"
+            d["match_confidence"] = 1.0
+            d["resolution_engine"] = "Exact Lookup"
         _add_matches(docs, "social_profile")
 
     # 2. Graph Traversal
     graph_context = {}
     if query.email:
-        graph_context = db_instance.get_subgraph(f"email:{query.email}", depth=2)
+        graph_context = db_instance.get_subgraph(f"email:{query.email}", depth=3) # Increased depth for pivot
     elif query.username:
-        graph_context = db_instance.get_subgraph(f"user:{query.username}", depth=2)
+        graph_context = db_instance.get_subgraph(f"user:{query.username}", depth=3)
+
+    # 2.5 Public Web Search (Real-time)
+    public_results = []
+    if query.include_public_search:
+        target = query.name or query.email or query.username
+        if target:
+            logger.info(f"Performing public web search for {target}")
+            public_results = web_searcher.search_public(target, num_results=5)
+            # Add to results as "public_web"
+            for url in public_results:
+                results.append({
+                    "type": "public_web", 
+                    "data": {"url": url, "query": target},
+                    "match_explanation": f"Matched public web search query: '{target}'"
+                })
 
     # 3. Enrichment (Geo & Health)
     locations = []
@@ -218,6 +273,101 @@ async def search_person(query: PersonSearchRequest):
         "risk_analysis": password_analysis,
         "narrative": narrative,
         "truncated": truncated,
+    }
+
+
+@app.post("/ingest/stealer_logs")
+async def ingest_stealer_logs(file: UploadFile = File(...)):
+    """
+    Ingests a ZIP file containing 'system_info.txt' and 'passwords.txt'.
+    Offloads processing to a background task.
+    """
+    import zipfile
+    import shutil
+    
+    try:
+        contents = await file.read()
+        if not contents:
+            raise HTTPException(status_code=400, detail="Empty file.")
+            
+        safe_name = _sanitize_filename(file.filename)
+        # We need a persistent temp location shared with workers if they are separate processes
+        # For this setup (local), /tmp is fine.
+        temp_dir = Path("/tmp/panopticon_ingest")
+        temp_dir.mkdir(exist_ok=True)
+        
+        task_id = secrets.token_hex(8)
+        job_dir = temp_dir / task_id
+        job_dir.mkdir()
+        
+        zip_path = job_dir / safe_name
+        zip_path.write_bytes(contents)
+        
+        # Trigger Background Task
+        # In a real cluster, we'd pass the S3 URL. Here we pass the local path.
+        from panopticon.worker import process_stealer_task
+        process_stealer_task.delay(str(zip_path), str(job_dir))
+            
+        return {"status": "accepted", "task_id": task_id, "message": "Processing started in background."}
+            
+    except Exception as e:
+        logger.error(f"Stealer ingestion queue failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/tasks/{task_id}")
+async def get_task_status(task_id: str):
+    """
+    Check status of a background task (e.g. stealer ingestion).
+    """
+    # In a full Celery setup, we would use AsyncResult(task_id).
+    # Since we are using a simplified worker dispatch in this environment, 
+    # we check if the job directory exists or has a 'done' marker.
+    
+    # Check simplified temp dir status
+    temp_dir = Path("/tmp/panopticon_ingest") / task_id
+    if not temp_dir.exists():
+        # Might be cleaned up (completed) or invalid
+        # In a real system, we'd query a job db.
+        # For now, we assume if it's gone, it's done (optimistic) or never existed.
+        # A better approach for this MVP is to check if we can find the ingestion record in Audit logs?
+        # Or just return "unknown/completed".
+        return {"task_id": task_id, "status": "completed_or_unknown"}
+        
+    # If dir exists, it's processing or failed
+    return {"task_id": task_id, "status": "processing"}
+
+@app.get("/search/pivot")
+async def search_pivot(type: str, value: str):
+    """
+    Advanced Pivot Search.
+    type: 'hash', 'ip', 'machine'
+    value: the identifier
+    """
+    if type not in ["hash", "ip", "machine"]:
+        raise HTTPException(status_code=400, detail="Invalid pivot type.")
+        
+    start_uid = ""
+    if type == "hash":
+        start_uid = f"hash:{value}"
+    elif type == "ip":
+        start_uid = f"ip:{value}"
+    elif type == "machine":
+        start_uid = f"machine:{value}"
+        
+    graph = db_instance.get_subgraph(start_uid, depth=2)
+    
+    # Extract connected identities
+    identities = []
+    if graph and graph.get("nodes"):
+        for uid, info in graph["nodes"].items():
+            if info["type"] in ["Identity", "Email"]:
+                identities.append(info)
+                
+    return {
+        "pivot_source": start_uid,
+        "connected_identities": identities,
+        "full_graph": graph
     }
 
 
@@ -279,8 +429,49 @@ async def active_recon(request: ReconRequest):
     db_instance.add_document(
         doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
     )
+    
+    # Update Graph
+    if hits:
+        user_uid = f"user:{request.username}"
+        db_instance.add_node(user_uid, "Identity", {"username": request.username, "source": "recon"})
+        
+        for hit in hits:
+            site_name = hit.get("site", "Unknown")
+            site_url = hit.get("url", "")
+            
+            site_uid = f"site:{site_name}"
+            db_instance.add_node(site_uid, "Site", {"name": site_name})
+            
+            db_instance.add_edge(user_uid, site_uid, "HAS_ACCOUNT", {"url": site_url})
+
     return {"username": request.username, "found_on": hits}
 
+
+@app.post("/crawl/visual")
+async def crawl_visual(url: str):
+    """
+    Trigger the Visual Crawler on a specific URL to harvest faces.
+    Uses Playwright + FaceEngine.
+    """
+    # In production, this should be a background task.
+    # For now, we run it async but it might block long requests if not workerized.
+    # Given the architecture, we should ideally use the worker.
+    # Let's dispatch to worker.py's generic runner or add a new task.
+    
+    # Since worker.py doesn't have a visual_crawl task explicitly exposed,
+    # we will add a simple wrapper here or trigger via Celery 'send_task' if dynamic.
+    # Best approach: Add task to worker.py (requires edit) OR run inline for demo.
+    # Running inline for immediate feedback in this environment.
+    
+    from panopticon.ingestion.crawlers.visual_crawler import VisualCrawler
+    crawler = VisualCrawler()
+    
+    try:
+        count = await crawler.crawl_and_index(url)
+        return {"status": "completed", "url": url, "faces_indexed": count}
+    except Exception as e:
+        logger.error(f"Visual crawl failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/ingest/record")
 async def ingest_record(record: IngestRecord):
@@ -292,8 +483,4 @@ async def ingest_record(record: IngestRecord):
 
 
 def _search_vectors(embedding: np.ndarray) -> List[Dict[str, Any]]:
-    if milvus_index.collection:
-        matches = milvus_index.search_vectors(embedding)
-        if matches:
-            return matches
-    return db_instance.search_vectors(embedding)
+    return vector_router.search_vectors(embedding)
