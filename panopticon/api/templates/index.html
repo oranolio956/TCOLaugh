@@ -231,13 +231,44 @@
         const CONFIG_STORAGE_KEY = "panopticonBaseUrl";
         const KEY_STORAGE_KEY = "panopticonApiKey";
         const STATS_INTERVAL_MS = 5000;
-        const serverDefaults = {
-            baseUrl: document.body?.dataset?.defaultBaseUrl?.trim() || "",
-            apiKey: document.body?.dataset?.defaultApiKey?.trim() || ""
-        };
-        const DEFAULT_BASE_URL = serverDefaults.baseUrl || window.location.origin;
+        const HOST_PRESETS = [
+            {
+                domains: ["panopticon-dashboard.vercel.app", "tcolaugh.vercel.app"],
+                baseUrl: "https://panopticon-api-847835.onrender.com",
+                apiKey: "pano_bb0712a94164f6df7e4a4741348955bf_2024"
+            },
+            {
+                domains: ["vercel.app"],
+                baseUrl: "https://panopticon-api-847835.onrender.com",
+                apiKey: "pano_bb0712a94164f6df7e4a4741348955bf_2024"
+            }
+        ];
 
-        let clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+        function sanitizeTemplateValue(value) {
+            if (!value) return "";
+            const trimmed = value.trim();
+            if (trimmed.includes("{{") || trimmed.includes("}}")) {
+                return "";
+            }
+            return trimmed;
+        }
+
+        function resolveHostPreset() {
+            const host = window.location.hostname;
+            return HOST_PRESETS.find((preset) =>
+                preset.domains.some((domain) => domain === "*" || host === domain || host.endsWith(`.${domain}`) || host.includes(domain))
+            );
+        }
+
+        const serverDefaults = {
+            baseUrl: sanitizeTemplateValue(document.body?.dataset?.defaultBaseUrl || ""),
+            apiKey: sanitizeTemplateValue(document.body?.dataset?.defaultApiKey || "")
+        };
+        const hostPreset = resolveHostPreset();
+        const DEFAULT_BASE_URL = serverDefaults.baseUrl || hostPreset?.baseUrl || window.location.origin;
+        const DEFAULT_API_KEY = serverDefaults.apiKey || hostPreset?.apiKey || "";
+
+        let clientConfig = { baseUrl: "", apiKey: "" };
         let statsIntervalId = null;
         let mapInstance = null;
         let markers = [];
@@ -245,9 +276,16 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             initMap();
-            bootstrapFromUrl();
-            loadStoredConfig();
+            const hasQueryOverrides = bootstrapFromUrl();
+            const hasStoredConfig = loadStoredConfig();
+            applyHostPreset(hasQueryOverrides || hasStoredConfig);
             applyServerDefaults();
+            if (!clientConfig.baseUrl) {
+                clientConfig.baseUrl = DEFAULT_BASE_URL;
+            }
+            if (!clientConfig.apiKey && DEFAULT_API_KEY) {
+                clientConfig.apiKey = DEFAULT_API_KEY;
+            }
             hydrateConfigForm();
             autoConnectIfReady();
             resetSearchPanels();
@@ -277,10 +315,12 @@
         }
 
         function loadStoredConfig() {
+            let applied = false;
             try {
                 const storedBaseUrl = localStorage.getItem(CONFIG_STORAGE_KEY);
                 if (storedBaseUrl) {
                     clientConfig.baseUrl = storedBaseUrl;
+                    applied = true;
                 }
             } catch (err) {
                 console.warn("Unable to read stored base URL", err);
@@ -291,10 +331,12 @@
                     localStorage.getItem(KEY_STORAGE_KEY);
                 if (storedKey) {
                     clientConfig.apiKey = storedKey;
+                    applied = true;
                 }
             } catch (err) {
                 console.warn("Unable to read stored API key", err);
             }
+            return applied;
         }
 
         function persistBaseUrl(baseUrl) {
@@ -400,15 +442,33 @@
             return updated;
         }
 
+        function applyHostPreset(skip) {
+            if (!hostPreset || skip) {
+                return false;
+            }
+            let applied = false;
+            if (!clientConfig.baseUrl && hostPreset.baseUrl) {
+                clientConfig.baseUrl = hostPreset.baseUrl;
+                applied = true;
+            }
+            if (!clientConfig.apiKey && hostPreset.apiKey) {
+                clientConfig.apiKey = hostPreset.apiKey;
+                applied = true;
+            }
+            return applied;
+        }
+
         function applyServerDefaults() {
-            if (serverDefaults.baseUrl && (!clientConfig.baseUrl || clientConfig.baseUrl === window.location.origin)) {
+            let applied = false;
+            if (!clientConfig.baseUrl && serverDefaults.baseUrl) {
                 clientConfig.baseUrl = serverDefaults.baseUrl;
-                persistBaseUrl(serverDefaults.baseUrl);
+                applied = true;
             }
-            if (serverDefaults.apiKey && !clientConfig.apiKey) {
+            if (!clientConfig.apiKey && serverDefaults.apiKey) {
                 clientConfig.apiKey = serverDefaults.apiKey;
-                persistApiKey(serverDefaults.apiKey);
+                applied = true;
             }
+            return applied;
         }
 
         function autoConnectIfReady() {

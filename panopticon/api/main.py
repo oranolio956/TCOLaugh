@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -30,8 +31,23 @@ MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
 milvus_index = MilvusManager()
 DASHBOARD_DEFAULT_BASE_URL = os.environ.get("PANOPTICON_DASHBOARD_BASE_URL")
 DASHBOARD_DEFAULT_API_KEY = os.environ.get("PANOPTICON_DASHBOARD_API_KEY")
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get("PANOPTICON_CORS_ORIGINS", "").split(",")
+    if origin.strip()
+]
+CORS_REGEX = os.environ.get("PANOPTICON_CORS_ORIGIN_REGEX")
+CORS_ALLOW_CREDENTIALS = bool(CORS_ORIGINS or CORS_REGEX)
 
-# Add Security Middleware
+# Add middleware (order matters)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS or ["*"],
+    allow_origin_regex=CORS_REGEX,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 app.add_middleware(SecurityMiddleware)
 
 # Initialize services
