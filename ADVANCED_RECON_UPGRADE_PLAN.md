@@ -160,7 +160,18 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
 **Goal:** Avoid detection and IP bans
 
 **Tasks:**
-1. **Proxy Rotation System**
+1. **Proxy Rotation System** (Specific Providers)
+   - **Primary: Smartproxy** ($7/GB PAYG, $4.50/GB subscription)
+     - 55M+ IP pool
+     - <0.5s response times
+     - Best price/performance for mid-market
+   - **Budget Option: IPRoyal** ($1.75/GB)
+     - 32M+ IP pool
+     - For bandwidth-intensive tasks
+   - **Enterprise: Bright Data** ($8.40-15/GB, ~$2.50/GB enterprise)
+     - 72M+ IP pool
+     - Strict compliance framework
+     - For Fortune 500 clients
    - Support HTTP/HTTPS proxies
    - Support SOCKS5 proxies
    - Support Tor network
@@ -172,50 +183,87 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
    - Respect robots.txt
    - Exponential backoff on errors
    - Random delays (human-like behavior)
+   - Platform-specific delays (respectful scraping)
 
 3. **Request Obfuscation**
    - Rotate User-Agents (real browser strings)
    - Randomize request headers
    - Cookie handling (session persistence)
-   - TLS fingerprint randomization
+   - **TLS Fingerprint Evasion** (NEW - Critical)
+     - Use **CycleTLS** (Node/Go) or **curl-impersonate**
+     - Mimic Chrome 120 on Windows fingerprint
+     - **uTLS** (Golang) for granular control
+     - Randomize ClientHello packet
+     - Evade Cloudflare JA3 detection
 
 4. **Distributed Execution**
    - Run scans across multiple IPs
    - Load balancing
    - Failover mechanisms
 
-**Deliverable:** `stealth_engine.py` + proxy management
+**Deliverable:** `stealth_engine.py` + proxy management + TLS evasion
 
-**Estimated Impact:** 0% IP bans (vs current high risk)
+**Estimated Impact:** 0% IP bans + evades advanced detection (Cloudflare, etc.)
 
 ---
 
 ### **PHASE 4: Breach Intelligence** 🔥 CRITICAL
 
-**Goal:** Integrate breach data like IntelX/HaveIBeenPwned
+**Goal:** Integrate breach data like IntelX/HaveIBeenPwned + Stealer Logs
 
 **Tasks:**
-1. **Breach Data APIs**
-   - HaveIBeenPwned API (free tier)
-   - DeHashed API (paid, more comprehensive)
-   - IntelX API (paid, dark web)
-   - Custom breach database ingestion
+1. **Breach Data APIs** (Priority Order)
+   - **IntelX API** (€2,500/year Researcher tier)
+     - Full-text archival search
+     - Tor/I2P historical caches
+     - Dark web content indexing
+   - **DeHashed API** (Subscription)
+     - Personal asset search
+     - High-speed queries
+   - **Hudson Rock Cavalier API** (Free tier available)
+     - Malware-to-domain mapping
+     - Links RedLine/Vidar logs to corporate domains
+   - **LeakIX API** (Free for researchers)
+     - Open service indexing
+     - `.git` config exposures
+     - Elasticsearch cluster leaks
+   - **Snusbase API** (Subscription)
+     - Wildcard searches (`*@company.com`)
+     - POST to `/data/search` endpoint
+   - **HaveIBeenPwned API** (Free tier)
+     - Basic breach checking
 
-2. **Breach Analysis**
+2. **Stealer Log Parser** (NEW - Critical Addition)
+   - **RedLine Stealer Logs:**
+     - Parse `System.txt` / `UserLog.txt`
+     - Extract HWID (MachineID) - persistent identifier
+     - Parse `cookies.sqlite` and `Login Data`
+     - Extract Telegram `tdata` directory
+     - Extract crypto wallets (`wallet.dat`)
+   - **Vidar Stealer Logs:**
+     - Parse structured folders (Browsers/Wallets/Messengers)
+     - Extract HWID (cross-cloud correlation)
+     - Dead Drop Resolver parsing (C2 from social media bios)
+   - **Raccoon v2 Logs:**
+     - Metadata extraction
+     - Quality assessment (admin rights, high-value cookies)
+   
+3. **HWID Tracking System**
+   - Index HWIDs from all stealer families
+   - Cross-correlate logs by HWID
+   - Track victims across multiple infections
+   - Link disparate personas to single physical device
+
+4. **Breach Analysis**
    - Password exposure detection
    - Data breach timeline
    - Compromised services list
    - Password strength analysis (from breaches)
+   - Password pivot mechanism (hash-based correlation)
 
-3. **Stealer Log Integration**
-   - Monitor stealer log dumps
-   - Real-time credential alerts
-   - Browser password extraction
-   - Cookie/session token analysis
+**Deliverable:** `breach_intelligence.py` + `stealer_log_parser.py` + API integrations
 
-**Deliverable:** `breach_intelligence.py` + API integrations
-
-**Estimated Impact:** Adds breach data (currently missing)
+**Estimated Impact:** Adds breach data + stealer log intelligence (game-changer)
 
 ---
 
@@ -229,12 +277,24 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
    - Email format guessing (first.last@company.com)
    - Social media email extraction
    - Breach data email correlation
+   - **SMTP Validation** (NEW)
+     - Connect to mail server
+     - Issue EHLO and RCPT TO commands
+     - Check for 250 OK response
+     - Drop connection before sending (RSET)
+   - **Google Account Check** (NEW)
+     - Use Google Calendar/Photos sharing APIs
+     - Check if email is associated with Google account
+     - Extract profile picture and full name
 
 2. **Subdomain Discovery**
    - Certificate Transparency logs
    - DNS enumeration (subdomain brute force)
    - Shodan integration (subdomain discovery)
    - Censys integration
+   - **LeakIX integration** (Free API)
+     - Open service discovery
+     - `.git` config exposures
 
 3. **Domain Intelligence**
    - WHOIS data
@@ -242,9 +302,9 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
    - Historical DNS (passive DNS)
    - SSL certificate analysis
 
-**Deliverable:** `email_enumeration.py` + `domain_intelligence.py`
+**Deliverable:** `email_enumeration.py` + `domain_intelligence.py` + SMTP validation
 
-**Estimated Impact:** Adds email/domain recon (currently missing)
+**Estimated Impact:** Adds email/domain recon + validation (currently missing)
 
 ---
 
@@ -272,9 +332,26 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
    - Image OCR (text in images)
    - Link extraction
 
-**Deliverable:** `social_analyzer.py` + content extraction
+4. **Advanced Mobile API Techniques** (NEW - Critical)
+   - **TikTok X-Bogus Bypass:**
+     - Use RPC framework approach
+     - Run Android emulator (Genymotion)
+     - Intercept API requests
+     - Generate valid X-Bogus signatures via native library
+     - Query hidden endpoints (phone number search)
+   - **Telegram Contact Syncing:**
+     - Upload batch of phone numbers (10,000+)
+     - Telegram returns registered profiles
+     - Extract photos, bios, usernames
+     - De-anonymize phone numbers → social profiles
+   - **Snapchat Shadow APIs:**
+     - Use background check endpoints
+     - Verify username availability
+     - Cross-platform identity correlation
 
-**Estimated Impact:** 10x more data per profile
+**Deliverable:** `social_analyzer.py` + `mobile_api_client.py` + content extraction
+
+**Estimated Impact:** 10x more data per profile + mobile platform access
 
 ---
 
@@ -473,35 +550,56 @@ Transform the basic 4-platform username checker into a **scary-good** OSINT reco
 
 ---
 
-## 📋 Questions for Deep Research
+## 📋 Research Status: COMPLETE ✅
 
-Before we start implementation, I'd like you to research these on Gemini:
+**All critical questions answered by provided documents:**
 
-1. **Sherlock Project Architecture:**
-   - How does Sherlock handle platform-specific detection?
-   - What's their approach to rate limiting?
-   - How do they structure platform data (JSON format)?
+1. ✅ **Sherlock Project Architecture:** 
+   - Platform-specific detection logic required
+   - Rate limiting per platform
+   - JSON structure for platform definitions
 
-2. **Proxy Services:**
-   - Best proxy providers for OSINT (residential vs datacenter)?
-   - How to integrate Tor with Python async?
-   - Proxy rotation best practices?
+2. ✅ **Proxy Services:** 
+   - **Smartproxy** recommended ($4.50/GB subscription)
+   - **IPRoyal** for budget ($1.75/GB)
+   - **Bright Data** for enterprise compliance
+   - Tor integration via SOCKS5
 
-3. **Breach Data APIs:**
-   - HaveIBeenPwned API rate limits and pricing?
-   - DeHashed API features and pricing?
-   - IntelX API capabilities and cost?
-   - Free alternatives?
+3. ✅ **Breach Data APIs:** 
+   - **IntelX:** €2,500/year (Researcher tier)
+   - **DeHashed:** Subscription-based
+   - **Hudson Rock:** Free API (limited)
+   - **LeakIX:** Free for researchers
+   - **Snusbase:** Subscription (wildcard search)
 
-4. **Detection Methods:**
-   - Best practices for HTML content analysis?
-   - How to detect JavaScript-rendered profiles?
-   - Redirect analysis techniques?
+4. ✅ **Detection Methods:**
+   - HTML content analysis (parse for "not found" messages)
+   - JavaScript rendering (Selenium fallback)
+   - Redirect following
+   - Status code + content analysis
 
-5. **Legal & Ethical:**
-   - Legal boundaries of OSINT?
-   - Terms of service considerations?
-   - Ethical guidelines?
+5. ✅ **Legal & Ethical:**
+   - **hiQ v LinkedIn:** Public scraping legal (CFAA doesn't apply)
+   - **Meta v Bright Data:** Logged-out scraping OK (ToS doesn't bind)
+   - **GDPR Article 9:** Cybersecurity exemption via Recital 49
+   - **Operational:** Geofence EU IPs for facial recognition
+
+**NEW Critical Research from Documents:**
+
+6. ✅ **Stealer Log Structure:**
+   - RedLine: System.txt with HWID
+   - Vidar: Structured folders + HWID
+   - Raccoon: Metadata-rich logs
+   - HWID = persistent device identifier
+
+7. ✅ **Advanced Techniques:**
+   - TikTok X-Bogus: RPC framework approach
+   - Telegram contact syncing: Phone → Profile
+   - TLS fingerprinting: CycleTLS, curl-impersonate
+
+8. ✅ **Infrastructure:**
+   - DiskANN: $400-600/month vs $2K-10K+ for HNSW
+   - Vamana algorithm for disk-based search
 
 ---
 
