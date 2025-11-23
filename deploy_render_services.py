@@ -137,8 +137,14 @@ def main():
             "PANOPTICON_USE_KAFKA": {"value": "false"},
             "PANOPTICON_DOCUMENT_TTL_SECONDS": {"value": "86400"},
             "PANOPTICON_INDEX_FIELDS": {"value": "email,username,phone,ip_address"},
-            "PANOPTICON_RECON_TIMEOUT": {"value": "6"},
-            "PANOPTICON_AI_GRAPH_LIMIT": {"value": "40"}
+            "PANOPTICON_RECON_TIMEOUT": {"value": "3"},
+            "PANOPTICON_AI_GRAPH_LIMIT": {"value": "40"},
+            # Phase 3: Stealth Features (Optional - proxies disabled by default)
+            "PANOPTICON_ENABLE_PROXY": {"value": "false"},
+            # Uncomment if using proxy providers:
+            # "SMARTPROXY_ENDPOINT": {"value": "http://gate.smartproxy.com:10000"},
+            # "SMARTPROXY_USERNAME": {"value": "your_username"},
+            # "SMARTPROXY_PASSWORD": {"value": "your_password"},
         })
         
         web_config = {

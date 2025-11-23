@@ -74,7 +74,7 @@ services:
       MILVUS_HOST: milvus
       MILVUS_PORT: "19530"
       PANOPTICON_USE_KAFKA: "true"
-      PANOPTICON_RECON_TIMEOUT: "6"
+      PANOPTICON_RECON_TIMEOUT: "3"
       REDIS_URL: redis://redis:6379/0
     volumes:
       - ../..:/app
