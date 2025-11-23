@@ -9,7 +9,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans">
+<body class="bg-slate-950 text-slate-100 font-sans"
+      data-default-base-url="{{ dashboard_base_url or '' }}"
+      data-default-api-key="{{ dashboard_api_key or '' }}">
     <div class="min-h-screen pb-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
@@ -226,9 +228,14 @@
     </div>
 
     <script>
-        const DEFAULT_BASE_URL = window.location.origin;
         const CONFIG_STORAGE_KEY = "panopticonBaseUrl";
+        const KEY_STORAGE_KEY = "panopticonApiKey";
         const STATS_INTERVAL_MS = 5000;
+        const serverDefaults = {
+            baseUrl: document.body?.dataset?.defaultBaseUrl?.trim() || "",
+            apiKey: document.body?.dataset?.defaultApiKey?.trim() || ""
+        };
+        const DEFAULT_BASE_URL = serverDefaults.baseUrl || window.location.origin;
 
         let clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
         let statsIntervalId = null;
@@ -238,10 +245,11 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             initMap();
-            loadStoredBaseUrl();
+            bootstrapFromUrl();
+            loadStoredConfig();
+            applyServerDefaults();
             hydrateConfigForm();
-            refreshStats();
-            scheduleStats();
+            autoConnectIfReady();
             resetSearchPanels();
         });
 
@@ -268,7 +276,7 @@
             return clientConfig;
         }
 
-        function loadStoredBaseUrl() {
+        function loadStoredConfig() {
             try {
                 const storedBaseUrl = localStorage.getItem(CONFIG_STORAGE_KEY);
                 if (storedBaseUrl) {
@@ -277,13 +285,41 @@
             } catch (err) {
                 console.warn("Unable to read stored base URL", err);
             }
+            try {
+                const storedKey =
+                    sessionStorage.getItem(KEY_STORAGE_KEY) ||
+                    localStorage.getItem(KEY_STORAGE_KEY);
+                if (storedKey) {
+                    clientConfig.apiKey = storedKey;
+                }
+            } catch (err) {
+                console.warn("Unable to read stored API key", err);
+            }
         }
 
         function persistBaseUrl(baseUrl) {
             try {
-                localStorage.setItem(CONFIG_STORAGE_KEY, baseUrl);
+                if (baseUrl) {
+                    localStorage.setItem(CONFIG_STORAGE_KEY, baseUrl);
+                } else {
+                    localStorage.removeItem(CONFIG_STORAGE_KEY);
+                }
             } catch (err) {
                 console.warn("Unable to persist base URL", err);
+            }
+        }
+
+        function persistApiKey(apiKey) {
+            try {
+                if (apiKey) {
+                    localStorage.setItem(KEY_STORAGE_KEY, apiKey);
+                    sessionStorage.setItem(KEY_STORAGE_KEY, apiKey);
+                } else {
+                    localStorage.removeItem(KEY_STORAGE_KEY);
+                    sessionStorage.removeItem(KEY_STORAGE_KEY);
+                }
+            } catch (err) {
+                console.warn("Unable to persist API key", err);
             }
         }
 
@@ -299,7 +335,7 @@
             }
             const message = config.apiKey
                 ? `Ready. Requests target ${config.baseUrl || DEFAULT_BASE_URL}`
-                : "Enter an API key (stored only for this session) to call the API.";
+                : "Enter an API key (stored in localStorage) to call the API.";
             updateConfigStatus(message, !config.apiKey);
         }
 
@@ -308,17 +344,15 @@
             const apiKey = (document.getElementById('config-api-key')?.value || "").trim();
             clientConfig = { baseUrl, apiKey };
             persistBaseUrl(baseUrl);
+            persistApiKey(apiKey);
             hydrateConfigForm();
             refreshStats();
             scheduleStats();
         }
 
         function clearConnection() {
-            try {
-                localStorage.removeItem(CONFIG_STORAGE_KEY);
-            } catch (err) {
-                console.warn("Unable to clear stored base URL", err);
-            }
+            persistBaseUrl("");
+            persistApiKey("");
             clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
             hydrateConfigForm();
             updateConfigStatus("Credentials cleared. Enter an API key to continue.", false);
@@ -340,6 +374,50 @@
             if (getApiConfig().apiKey) {
                 statsIntervalId = setInterval(refreshStats, STATS_INTERVAL_MS);
             }
+        }
+
+        function bootstrapFromUrl() {
+            const paramsList = [new URLSearchParams(window.location.search)];
+            if (window.location.hash.includes('=')) {
+                paramsList.push(new URLSearchParams(window.location.hash.slice(1)));
+            }
+            let updated = false;
+            paramsList.forEach(params => {
+                if (!params) return;
+                const baseUrl = params.get('baseUrl') || params.get('api') || params.get('apiBase');
+                const apiKey = params.get('apiKey') || params.get('key');
+                if (baseUrl) {
+                    clientConfig.baseUrl = baseUrl;
+                    persistBaseUrl(baseUrl);
+                    updated = true;
+                }
+                if (apiKey) {
+                    clientConfig.apiKey = apiKey;
+                    persistApiKey(apiKey);
+                    updated = true;
+                }
+            });
+            return updated;
+        }
+
+        function applyServerDefaults() {
+            if (serverDefaults.baseUrl && (!clientConfig.baseUrl || clientConfig.baseUrl === window.location.origin)) {
+                clientConfig.baseUrl = serverDefaults.baseUrl;
+                persistBaseUrl(serverDefaults.baseUrl);
+            }
+            if (serverDefaults.apiKey && !clientConfig.apiKey) {
+                clientConfig.apiKey = serverDefaults.apiKey;
+                persistApiKey(serverDefaults.apiKey);
+            }
+        }
+
+        function autoConnectIfReady() {
+            hydrateConfigForm();
+            if (clientConfig.apiKey && clientConfig.baseUrl) {
+                updateConfigStatus(`Connected to ${clientConfig.baseUrl}`, false);
+            }
+            refreshStats();
+            scheduleStats();
         }
 
         function buildApiUrl(path) {

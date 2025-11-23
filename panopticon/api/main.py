@@ -28,6 +28,8 @@ logger = logging.getLogger("uvicorn")
 MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
 MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
 milvus_index = MilvusManager()
+DASHBOARD_DEFAULT_BASE_URL = os.environ.get("PANOPTICON_DASHBOARD_BASE_URL")
+DASHBOARD_DEFAULT_API_KEY = os.environ.get("PANOPTICON_DASHBOARD_API_KEY")
 
 # Add Security Middleware
 app.add_middleware(SecurityMiddleware)
@@ -86,7 +88,14 @@ def _safe_document_search(field: str, value: str) -> List[Dict[str, Any]]:
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "dashboard_base_url": DASHBOARD_DEFAULT_BASE_URL,
+            "dashboard_api_key": DASHBOARD_DEFAULT_API_KEY,
+        },
+    )
 
 
 @app.get("/stats")
