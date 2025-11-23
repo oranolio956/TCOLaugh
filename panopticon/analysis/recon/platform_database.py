@@ -42,13 +42,23 @@ class PlatformDefinition:
     
     def validate_username(self, username: str) -> bool:
         """Validate username format against regex if specified."""
+        # Basic validation: username should not be empty
+        if not username or not username.strip():
+            return False
+        
+        # Basic length check (most platforms have limits)
+        if len(username) > 100:  # Reasonable upper limit
+            return False
+        
+        # If platform has regex check, use it
         if not self.regex_check:
             return True
+        
         try:
             return bool(re.match(self.regex_check, username))
         except re.error:
             logger.warning(f"Invalid regex for {self.name}: {self.regex_check}")
-            return True
+            return True  # Fail open if regex is invalid
     
     def build_url(self, username: str) -> str:
         """Build the full URL for a username."""

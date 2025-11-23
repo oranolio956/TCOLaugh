@@ -9,6 +9,7 @@ Optimized ActiveScanner with performance improvements:
 import asyncio
 import logging
 import os
+import time
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -156,20 +157,24 @@ class ActiveScanner:
         async def check_with_semaphore(platform_or_site):
             """Check platform with semaphore control."""
             async with semaphore:
-                if platforms:
-                    result = await self._check_platform(client, platform_or_site, username)
-                else:
-                    site_name, template = platform_or_site
-                    result = await self._check_site_fallback(client, site_name, template.format(username), site_name)
-                
-                if result:
-                    async with results_lock:
-                        results.append(result)
-                        # Early termination if we have enough results
-                        if self.early_termination and len(results) >= self.early_termination:
-                            return "stop"
-                        if max_results and len(results) >= max_results:
-                            return "stop"
+                start_time = time.time()
+                try:
+                    if platforms:
+                        result = await self._check_platform(client, platform_or_site, username, start_time)
+                    else:
+                        site_name, template = platform_or_site
+                        result = await self._check_site_fallback(client, site_name, template.format(username), site_name, start_time)
+                    
+                    if result:
+                        async with results_lock:
+                            results.append(result)
+                            # Early termination if we have enough results
+                            if self.early_termination and len(results) >= self.early_termination:
+                                return "stop"
+                            if max_results and len(results) >= max_results:
+                                return "stop"
+                except Exception as e:
+                    logger.debug(f"Error in check_with_semaphore: {e}")
                 return "continue"
         
         # Create tasks
@@ -205,7 +210,7 @@ class ActiveScanner:
         return results[:max_results] if max_results else results
 
     async def _check_platform(
-        self, client: httpx.AsyncClient, platform: PlatformDefinition, username: str
+        self, client: httpx.AsyncClient, platform: PlatformDefinition, username: str, start_time: Optional[float] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Check a single platform using the platform definition.
@@ -221,6 +226,9 @@ class ActiveScanner:
         url = platform.build_url(username)
         
         try:
+            # Track request start time
+            request_start = start_time if start_time else time.time()
+            
             # Prepare headers
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -237,13 +245,11 @@ class ActiveScanner:
             else:
                 response = await client.get(url, headers=headers)
             
+            # Calculate response time
+            response_time = time.time() - request_start
+            
             # Get final URL after redirects
             final_url = str(response.url)
-            
-            # Track response time (if available from response metadata)
-            response_time = getattr(response, 'elapsed', None)
-            if response_time:
-                response_time = response_time.total_seconds()
             
             # Detect using intelligent engine (enhanced if available)
             if USE_ENHANCED_DETECTION:
@@ -292,7 +298,7 @@ class ActiveScanner:
             return None
 
     async def _check_site_fallback(
-        self, client: httpx.AsyncClient, site: str, url: str, label: str
+        self, client: httpx.AsyncClient, site: str, url: str, label: str, start_time: Optional[float] = None
     ) -> Optional[Dict[str, str]]:
         """
         Fallback method for simple site checking (backward compatibility).
@@ -307,12 +313,17 @@ class ActiveScanner:
             Result dict or None
         """
         try:
+            request_start = start_time if start_time else time.time()
             response = await client.get(
                 url,
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
             )
+            response_time = time.time() - request_start
             if response.status_code == 200:
-                return {"site": site, "url": str(response.url), "status": "found"}
+                result = {"site": site, "url": str(response.url), "status": "found"}
+                if response_time:
+                    result["response_time_ms"] = round(response_time * 1000, 2)
+                return result
         except Exception as exc:
             logger.debug(f"Error checking {site}: {exc}")
         return None
