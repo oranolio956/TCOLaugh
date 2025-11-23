@@ -31,6 +31,18 @@ class PolyglotStore:
 
     def __init__(self, db_path: Optional[str] = None):
         self.db_path = db_path or DEFAULT_DB_PATH
+        
+        # Ensure the directory exists
+        db_dir = os.path.dirname(os.path.abspath(self.db_path))
+        if db_dir and db_dir != '.' and not os.path.exists(db_dir):
+            try:
+                os.makedirs(db_dir, mode=0o755, exist_ok=True)
+                logger.info(f"Created database directory: {db_dir}")
+            except Exception as e:
+                logger.warning(f"Could not create directory {db_dir}: {e}, using current directory")
+                # Fall back to current directory
+                self.db_path = "panopticon.db"
+        
         self._lock = threading.Lock()
         self.ttl_seconds = DOCUMENT_TTL_SECONDS
         self._last_purge = 0.0
