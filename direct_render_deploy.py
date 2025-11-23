@@ -14,7 +14,13 @@ import requests
 from typing import Dict, Any, Optional
 
 # Configuration
-RENDER_API_KEY = os.environ.get("RENDER_API_KEY", "rnd_MBBJ6LlNi410654cpxpNUHGKnwRS")
+def _require_env(var_name: str) -> str:
+    value = os.environ.get(var_name)
+    if not value:
+        raise RuntimeError(f"Environment variable '{var_name}' must be set before running this script.")
+    return value
+
+RENDER_API_KEY = _require_env("RENDER_API_KEY")
 RENDER_API_URL = "https://api.render.com/v1"
 
 class DirectRenderDeployer:

@@ -30,7 +30,7 @@ Follow the steps below to reproduce the full environment using your own credenti
    cd panopticon/infrastructure
    docker compose up --build
    ```
-   The API is available at http://localhost:8000 with the default key `dev-panopticon`.
+   The API is available at http://localhost:8000 once you export `PANOPTICON_API_KEY` (for local testing you can set it to `dev-panopticon`).
 
 ---
 
@@ -40,7 +40,7 @@ Follow the steps below to reproduce the full environment using your own credenti
 
 ```bash
 curl -fsSL https://render.com/static/cli/install.sh | bash
-export RENDER_API_KEY=rnd_YOUR_KEY_HERE
+export RENDER_API_KEY=<your_render_api_key>
 render login --api-key "$RENDER_API_KEY"
 ```
 

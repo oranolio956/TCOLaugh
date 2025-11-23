@@ -59,9 +59,13 @@ python3 panopticon/scenario_test.py
 ## Configuration Flags
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `PANOPTICON_API_KEY` | `dev-panopticon` (dev only) | Required header (`X-API-Key`) for every non-static route |
+| `PANOPTICON_API_KEY` | _none_ (required) | Required header (`X-API-Key`) for every non-static route |
+| `PANOPTICON_API_BASE_URL` | `http://localhost:8000` | Target URL for internal services (crawler) when hitting the API |
 | `PANOPTICON_ENABLE_AI_BRIEFING` | `false` | Opt-in switch before any graph data is sent to Anthropic |
 | `PANOPTICON_MAX_UPLOAD_BYTES` | `5MB` | Upload limit for `/search/face` |
+| `PANOPTICON_MAX_SEARCH_RESULTS` | `100` | Upper bound for `/search/person` document matches |
+| `PANOPTICON_RATE_LIMIT_WINDOW` | `60` | Rate-limit window (seconds) enforced by the API middleware |
+| `PANOPTICON_RATE_LIMIT_MAX` | `60` | Max authenticated requests per IP per window |
 | `PANOPTICON_DB_PATH` | `./panopticon.db` | Location of the SQLite polyglot store (point to Render disk) |
 | `PANOPTICON_DOCUMENT_TTL_SECONDS` | `0` (disabled) | Automatically purge non-audit documents older than the TTL |
 | `PANOPTICON_INDEX_FIELDS` | `email,username,phone,ip_address` | CSV of document keys that should be indexed for fast lookup |
@@ -70,6 +74,8 @@ python3 panopticon/scenario_test.py
 | `PANOPTICON_AI_GRAPH_LIMIT` | `40` | Max number of nodes/edges summarized before sending to the LLM |
 | `NEO4J_URI` / `NEO4J_USER` / `NEO4J_PASSWORD` | `bolt://localhost:7687`, `neo4j`, `panopticon_secret` | Point workers at a managed Neo4j instance |
 | `MILVUS_HOST` / `MILVUS_PORT` | `localhost`, `19530` | Milvus vector DB endpoint; falls back to SQLite vectors if unset |
+
+> Optional: The probabilistic identity linker depends on Splink. Install it with `pip install splink` before invoking `panopticon.analysis.identity.IdentityLinker`.
 
 ## Security Hardening Highlights
 * API key enforcement on `/stats`, `/search/*`, `/recon/*`

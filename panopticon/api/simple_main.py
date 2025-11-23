@@ -26,7 +26,9 @@ app.add_middleware(
 )
 
 # Get API key from environment
-EXPECTED_API_KEY = os.environ.get("PANOPTICON_API_KEY", "dev-panopticon")
+EXPECTED_API_KEY = os.environ.get("PANOPTICON_API_KEY")
+if not EXPECTED_API_KEY:
+    raise RuntimeError("PANOPTICON_API_KEY must be set before running the API.")
 
 @app.get("/")
 async def root():

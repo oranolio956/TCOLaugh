@@ -31,11 +31,11 @@
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div>
                         <label for="config-base-url" class="block text-xs uppercase text-slate-400 mb-1">API Base URL</label>
-                        <input type="text" id="config-base-url" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="https://panopticon-api-847835.onrender.com" value="https://panopticon-api-847835.onrender.com">
+                        <input type="text" id="config-base-url" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="https://your-render-api.onrender.com">
                     </div>
                     <div>
                         <label for="config-api-key" class="block text-xs uppercase text-slate-400 mb-1">API Key</label>
-                        <input type="password" id="config-api-key" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="dev-panopticon" value="dev-panopticon">
+                        <input type="password" id="config-api-key" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="your-panopticon-api-key">
                     </div>
                     <div class="flex items-end">
                         <button onclick="saveConnection()" class="w-full bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded text-sm">Save & Refresh</button>
@@ -112,9 +112,8 @@
 
     <script>
         const DEFAULT_BASE_URL = window.location.origin;
-        const CONFIG_STORAGE_KEY = "panopticonClientConfig";
-        const KEY_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-        let clientConfig = null;
+        const CONFIG_STORAGE_KEY = "panopticonBaseUrl";
+        let clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
         let statsIntervalId = null;
 
         let map = L.map('map').setView([20, 0], 2);
@@ -126,53 +125,61 @@
         let markers = [];
 
         document.addEventListener("DOMContentLoaded", () => {
+            loadStoredBaseUrl();
             hydrateConfigForm();
             refreshStats();
             scheduleStats();
         });
 
         function getApiConfig() {
-            if (clientConfig) {
-                return clientConfig;
-            }
+            return clientConfig;
+        }
+
+        function loadStoredBaseUrl() {
             try {
-                const stored = localStorage.getItem(CONFIG_STORAGE_KEY);
-                if (stored) {
-                    const parsed = JSON.parse(stored);
-                    if (!parsed.savedAt || Date.now() - parsed.savedAt > KEY_TTL_MS) {
-                        localStorage.removeItem(CONFIG_STORAGE_KEY);
-                        clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
-                    } else {
-                        clientConfig = parsed;
-                    }
-                } else {
-                    clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+                const storedBaseUrl = localStorage.getItem(CONFIG_STORAGE_KEY);
+                if (storedBaseUrl) {
+                    clientConfig.baseUrl = storedBaseUrl;
                 }
             } catch (err) {
-                clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
+                console.warn("Unable to read stored base URL", err);
             }
-            return clientConfig;
+        }
+
+        function persistBaseUrl(baseUrl) {
+            try {
+                localStorage.setItem(CONFIG_STORAGE_KEY, baseUrl);
+            } catch (err) {
+                console.warn("Unable to persist base URL", err);
+            }
         }
 
         function hydrateConfigForm() {
             const config = getApiConfig();
             document.getElementById('config-base-url').value = config.baseUrl || DEFAULT_BASE_URL;
             document.getElementById('config-api-key').value = config.apiKey || "";
-            updateConfigStatus(config.apiKey ? `Ready. Requests target ${config.baseUrl || DEFAULT_BASE_URL}` : "API key required to call the Render API.", !config.apiKey);
+            const message = config.apiKey
+                ? `Ready. Requests target ${config.baseUrl || DEFAULT_BASE_URL}`
+                : "Enter an API key (stored only for this session) to call the API.";
+            updateConfigStatus(message, !config.apiKey);
         }
 
         function saveConnection() {
             const baseUrl = document.getElementById('config-base-url').value.trim() || DEFAULT_BASE_URL;
             const apiKey = document.getElementById('config-api-key').value.trim();
-            clientConfig = { baseUrl, apiKey, savedAt: Date.now() };
-            localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(clientConfig));
+            clientConfig = { baseUrl, apiKey };
+            persistBaseUrl(baseUrl);
             hydrateConfigForm();
             refreshStats();
             scheduleStats();
         }
 
         function clearConnection() {
-            localStorage.removeItem(CONFIG_STORAGE_KEY);
+            try {
+                localStorage.removeItem(CONFIG_STORAGE_KEY);
+            } catch (err) {
+                console.warn("Unable to clear stored base URL", err);
+            }
             clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
             hydrateConfigForm();
             updateConfigStatus("Credentials cleared. Enter an API key to continue.", false);

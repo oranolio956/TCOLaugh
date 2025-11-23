@@ -11,7 +11,13 @@ import requests
 from typing import Dict, Any, Optional
 
 # Configuration
-RENDER_API_KEY = os.environ.get("RENDER_API_KEY", "rnd_MBBJ6LlNi410654cpxpNUHGKnwRS")
+def _require_env(var_name: str) -> str:
+    value = os.environ.get(var_name)
+    if not value:
+        raise RuntimeError(f"Environment variable '{var_name}' must be set before running this script.")
+    return value
+
+RENDER_API_KEY = _require_env("RENDER_API_KEY")
 RENDER_API_URL = "https://api.render.com/v1"
 GITHUB_REPO = "https://github.com/oranolio956/TCOLaugh"
 
@@ -91,7 +97,7 @@ class RenderServiceCreator:
         credentials = deployment_info.get("credentials", {})
         api_key = credentials.get("PANOPTICON_API_KEY")
         neo4j_password = credentials.get("NEO4J_PASSWORD")
-        timestamp = deployment_info.get("timestamp", "847835")
+        timestamp = deployment_info.get("timestamp") or "pending"
         
         print("\n" + "="*60)
         print("🚀 CREATING RENDER SERVICES")

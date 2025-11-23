@@ -2,14 +2,26 @@ import logging
 from typing import Any, Dict, List
 
 import pandas as pd
-from splink.duckdb.blocking_rule_library import block_on
-from splink.duckdb.linker import DuckDBLinker
+
+try:
+    from splink.duckdb.blocking_rule_library import block_on
+    from splink.duckdb.linker import DuckDBLinker
+
+    SPLINK_AVAILABLE = True
+except ImportError:  # pragma: no cover - optional dependency
+    SPLINK_AVAILABLE = False
+    block_on = None  # type: ignore
+    DuckDBLinker = None  # type: ignore
 
 logger = logging.getLogger(__name__)
 
 
 class IdentityLinker:
     def __init__(self):
+        if not SPLINK_AVAILABLE:
+            raise RuntimeError(
+                "Splink is not installed. Install the optional dependency with `pip install splink`."
+            )
         # Define the Splink settings
         self.settings = {
             "link_type": "dedupe_only",

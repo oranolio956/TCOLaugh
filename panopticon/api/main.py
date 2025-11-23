@@ -17,6 +17,7 @@ from panopticon.analysis.narrative.graph_rag import GraphNarrator
 from panopticon.analysis.recon.active_scanner import ActiveScanner
 from panopticon.analysis.visual.face_engine import FaceEngine
 from panopticon.api.security import SecurityMiddleware
+from panopticon.ingestion.kafka_interface import persist_record as persist_ingestion_record
 from panopticon.persistence.sqlite_manager import db_instance
 from panopticon.persistence.vector.milvus_manager import MilvusManager
 
@@ -25,6 +26,7 @@ app = FastAPI(
 )
 logger = logging.getLogger("uvicorn")
 MAX_UPLOAD_BYTES = int(os.environ.get("PANOPTICON_MAX_UPLOAD_BYTES", 5 * 1024 * 1024))
+MAX_SEARCH_RESULTS = int(os.environ.get("PANOPTICON_MAX_SEARCH_RESULTS", "100"))
 milvus_index = MilvusManager()
 
 # Add Security Middleware
@@ -53,6 +55,14 @@ class ReconRequest(BaseModel):
     username: str
 
 
+class IngestRecord(BaseModel):
+    source_type: str
+    raw_data: Dict[str, Any]
+    timestamp: float = 0.0
+    dataset: Optional[str] = None
+    url: Optional[str] = None
+
+
 def _sanitize_filename(filename: Optional[str]) -> str:
     """
     Prevent directory traversal and ensure predictable temp files.
@@ -64,6 +74,14 @@ def _sanitize_filename(filename: Optional[str]) -> str:
     if not safe or safe.startswith("."):
         return f"upload_{secrets.token_hex(4)}"
     return safe
+
+
+def _safe_document_search(field: str, value: str) -> List[Dict[str, Any]]:
+    try:
+        return db_instance.search_documents(field, value)
+    except ValueError as exc:
+        logger.warning("Document search rejected for %s: %s", field, exc)
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -100,19 +118,32 @@ async def search_person(query: PersonSearchRequest):
         )
     requested_fields = list(filtered_query.keys())  # Avoid logging raw values
     logger.info("Processing search query for fields=%s", requested_fields)
-    results = []
+    results: List[Dict[str, Any]] = []
+    truncated = False
+
+    def _add_matches(records: List[Dict[str, Any]], label: str):
+        nonlocal truncated
+        if not records:
+            return
+        remaining = max(MAX_SEARCH_RESULTS - len(results), 0)
+        if remaining == 0:
+            truncated = True
+            return
+        slice_records = records[:remaining]
+        for record in slice_records:
+            results.append({"type": label, "data": record})
+        if len(slice_records) < len(records):
+            truncated = True
 
     # 1. Document Search (Naive)
     # In future: Async OpenSearch calls here
     if query.email:
-        docs = db_instance.search_documents("email", query.email)
-        for d in docs:
-            results.append({"type": "breach_record", "data": d})
+        docs = _safe_document_search("email", query.email)
+        _add_matches(docs, "breach_record")
 
     if query.username:
-        docs = db_instance.search_documents("username", query.username)
-        for d in docs:
-            results.append({"type": "social_profile", "data": d})
+        docs = _safe_document_search("username", query.username)
+        _add_matches(docs, "social_profile")
 
     # 2. Graph Traversal
     graph_context = {}
@@ -154,6 +185,7 @@ async def search_person(query: PersonSearchRequest):
         "geo_trace": locations,
         "risk_analysis": password_analysis,
         "narrative": narrative,
+        "truncated": truncated,
     }
 
 
@@ -216,6 +248,15 @@ async def active_recon(request: ReconRequest):
         doc_id, "active_recon", 0, {"username": request.username, "hits": hits}
     )
     return {"username": request.username, "found_on": hits}
+
+
+@app.post("/ingest/record")
+async def ingest_record(record: IngestRecord):
+    """
+    Accepts ingestion events from trusted services (crawler, workers) and persists them.
+    """
+    persist_ingestion_record(record.dict())
+    return {"status": "accepted"}
 
 
 def _search_vectors(embedding: np.ndarray) -> List[Dict[str, Any]]:

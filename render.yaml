@@ -9,7 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.9"
       - key: PANOPTICON_API_KEY
-        value: pano_u5KwqEjJHDt9rkUH4yOwefZkl8OVfpiK
+        value: REPLACE_WITH_RENDER_SECRET
       - key: PANOPTICON_ENABLE_AI_BRIEFING
         value: "false"
       - key: PANOPTICON_MAX_UPLOAD_BYTES
@@ -21,7 +21,7 @@ services:
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
-        value: neo4j_27r1UAefn49TCstCGneKjTFN
+        value: REPLACE_WITH_RENDER_SECRET
       - key: MILVUS_HOST
         value: localhost
       - key: MILVUS_PORT
@@ -59,7 +59,7 @@ services:
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
-        value: neo4j_27r1UAefn49TCstCGneKjTFN
+        value: REPLACE_WITH_RENDER_SECRET
       - key: MILVUS_HOST
         value: localhost
       - key: MILVUS_PORT
@@ -78,3 +78,7 @@ services:
         value: "3.9"
       - key: PANOPTICON_USE_KAFKA
         value: "false"
+      - key: PANOPTICON_API_BASE_URL
+        value: "https://your-render-api-url"
+      - key: PANOPTICON_API_KEY
+        value: REPLACE_WITH_RENDER_SECRET

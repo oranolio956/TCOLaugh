@@ -147,7 +147,7 @@ class PolyglotStore:
                     self._purge_if_needed(conn)
 
     def search_documents(
-        self, query_key: str, query_value: str
+        self, query_key: str, query_value: str, allow_full_scan: bool = False
     ) -> List[Dict[str, Any]]:
         normalized_key = query_key.lower()
         normalized_value = str(query_value).strip().lower()
@@ -167,6 +167,11 @@ class PolyglotStore:
                 rows = cur.fetchall()
                 if rows:
                     return [json.loads(payload) for (payload,) in rows]
+
+            if not allow_full_scan:
+                raise ValueError(
+                    f"Query key '{query_key}' is not indexed. Enable allow_full_scan=True to force a scan."
+                )
 
             cur.execute("SELECT data FROM documents")
             return [

@@ -1,18 +1,18 @@
 {
-  "timestamp": "847835",
+  "timestamp": "",
   "credentials": {
-    "PANOPTICON_API_KEY": "pano_u5KwqEjJHDt9rkUH4yOwefZkl8OVfpiK",
-    "NEO4J_PASSWORD": "neo4j_27r1UAefn49TCstCGneKjTFN"
+    "PANOPTICON_API_KEY": "REPLACE_WITH_GENERATED_KEY",
+    "NEO4J_PASSWORD": "REPLACE_WITH_GENERATED_PASSWORD"
   },
   "services": {
-    "api": "panopticon-api-847835",
-    "worker": "panopticon-worker-847835",
-    "crawler": "panopticon-crawler-847835"
+    "api": "",
+    "worker": "",
+    "crawler": ""
   },
-  "api_endpoint": "https://panopticon-api-847835.onrender.com",
+  "api_endpoint": "",
   "service_ids": {
-    "Web API": "srv-d4h30a3uibrs73dbtiig",
-    "Worker": "srv-d4h30bn5r7bs73bjq5i0",
-    "Crawler": "srv-d4h30chr0fns73a0380g"
+    "Web API": "",
+    "Worker": "",
+    "Crawler": ""
   }
 }

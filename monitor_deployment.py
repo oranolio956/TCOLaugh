@@ -11,7 +11,13 @@ import requests
 from typing import Dict, Any
 
 # Configuration
-RENDER_API_KEY = os.environ.get("RENDER_API_KEY", "rnd_MBBJ6LlNi410654cpxpNUHGKnwRS")
+def _require_env(var_name: str) -> str:
+    value = os.environ.get(var_name)
+    if not value:
+        raise RuntimeError(f"Environment variable '{var_name}' must be set before running this script.")
+    return value
+
+RENDER_API_KEY = _require_env("RENDER_API_KEY")
 RENDER_API_URL = "https://api.render.com/v1"
 
 class DeploymentMonitor:
@@ -133,11 +139,11 @@ class DeploymentMonitor:
                     
                     # Print access info
                     print("\n📋 Access Information:")
-                    print(f"  API URL: https://panopticon-api-847835.onrender.com")
-                    print(f"  API Key: pano_u5KwqEjJHDt9rkUH4yOwefZkl8OVfpiK")
-                    print(f"\n  Test command:")
-                    print(f"  curl -H 'X-API-Key: pano_u5KwqEjJHDt9rkUH4yOwefZkl8OVfpiK' \\")
-                    print(f"       https://panopticon-api-847835.onrender.com/stats")
+                    print("  API URL: https://<your-render-api-url>")
+                    print("  API Key: <retrieved securely from Render/Vault>")
+                    print("\n  Test command:")
+                    print("  curl -H \"X-API-Key: $PANOPTICON_API_KEY\" \\")
+                    print("       https://<your-render-api-url>/stats")
                     break
                 
                 # Check if any failed
