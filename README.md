@@ -32,7 +32,8 @@ Panopticon is a Multi-Modal Identity Resolution (MMIR) system designed to synthe
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
-export PANOPTICON_API_KEY=dev-panopticon  # or any secret you prefer
+export PANOPTICON_API_KEY=dev-panopticon        # required: use a real secret in shared envs
+export PANOPTICON_API_BASE_URL=http://localhost:8000
 ./start_panopticon.sh
 ```
 * API: `http://localhost:8000`
@@ -77,13 +78,30 @@ python3 panopticon/scenario_test.py
 
 > Optional: The probabilistic identity linker depends on Splink. Install it with `pip install splink` before invoking `panopticon.analysis.identity.IdentityLinker`.
 
+### Secure Ingestion Channel
+* **HTTP ingest endpoint**: `POST /ingest/record` (requires `X-API-Key`). Use this when crawlers or workers run outside the same disk as the API.
+* **Recommended env vars for crawlers/workers**:
+  * `PANOPTICON_API_BASE_URL` – base Render/Vercel URL for the API.
+  * `PANOPTICON_API_KEY` – the same key the API expects; supply via Render secrets or your secret manager.
+  * `PANOPTICON_KAFKA_TOPIC` and `PANOPTICON_USE_KAFKA` – optional; enable when a Kafka broker is available.
+* **Fallback**: if HTTP ingestion fails, the crawler automatically falls back to the local Polyglot store via the embedded `IngestionProducer`.
+
+### Rate Limiting & Quotas
+The API middleware enforces per-IP throttling using `PANOPTICON_RATE_LIMIT_MAX` requests per `PANOPTICON_RATE_LIMIT_WINDOW` seconds. Tune these values per deployment tier, and expose them to operators so they can temporarily raise limits during bulk ingest/testing.
+
+### Secret Management Guidance
+* Never check API keys or database passwords into git. Render blueprints now use placeholders; populate real values via Render’s dashboard or Terraform.
+* Rotate all keys if you previously used the hard-coded defaults (`dev-panopticon`, etc.).
+* When running `pytest`/CI, inject `PANOPTICON_API_KEY` (and any other required secrets) through your CI secret store rather than exporting inside tests.
+
 ## Security Hardening Highlights
 * API key enforcement on `/stats`, `/search/*`, `/recon/*`
-* Frontend no longer leaks credentials; users provide keys explicitly
+* Frontend no longer persists secrets—only the API base URL is cached in `localStorage`
 * Audit logs capture metadata only (no payload dumps)
 * Face-upload endpoint sanitizes filenames, enforces size limits, and scrubs temp files
 * Document store now indexes sensitive identifiers, purges stale data, and keeps WAL mode enabled for crash safety
 * Vector similarity search is cached in-memory for low latency and can fall back to Milvus if available
 * Username reconnaissance runs concurrently over HTTP/2 via `httpx` instead of blocking the FastAPI event loop
+* HTTP ingestion endpoint plus crawler fallback ensures data arrives even when Kafka/SQLite live in separate environments
 * Kafka ingestion is feature-flagged—enable it in production to stream raw records while retaining SQLite fallback
 * External graph/vector services (Neo4j, Milvus) are fully controlled via environment variables, making managed deployments straightforward

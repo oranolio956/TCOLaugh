@@ -51,6 +51,7 @@ Before first use, open the dashboard settings card and enter:
 2. Fill in the API URL and key in the Connection Settings panel
 3. Click "Save & Refresh" to connect
 4. The dashboard will load live stats from the backend
+5. API keys are kept only in memory per tab; re-enter them if you refresh.
 
 ---
 
@@ -77,6 +78,15 @@ PANOPTICON_RATE_LIMIT_MAX=60
 
 ### Frontend (Vercel) - No ENV vars needed
 The frontend keeps only the API base URL in `localStorage`; API keys stay in-memory per session.
+
+### Crawlers / Workers
+```
+PANOPTICON_API_BASE_URL=https://<your-render-api-url>
+PANOPTICON_API_KEY=<same secret as API>
+PANOPTICON_KAFKA_TOPIC=raw_ingestion          # optional
+PANOPTICON_USE_KAFKA=false                    # flip to true when broker is ready
+```
+When HTTP ingestion is configured, crawlers post to `POST /ingest/record` and only fall back to Kafka/SQLite if the request fails.
 
 ---
 
@@ -138,6 +148,7 @@ The frontend keeps only the API base URL in `localStorage`; API keys stay in-mem
 ### If API returns 403 Forbidden:
 - Confirm you are sending the production `PANOPTICON_API_KEY` from your secret store
 - Ensure the `X-API-Key` header is included in requests
+- Check whether the rate limit threshold (`PANOPTICON_RATE_LIMIT_MAX`) has been exceeded (HTTP 429)
 
 ### If Frontend can't connect to backend:
 - Verify CORS is working (already configured)
