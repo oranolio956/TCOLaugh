@@ -9,153 +9,274 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 font-mono">
+<body class="bg-slate-950 text-slate-100 font-sans"
+      data-default-base-url="{{ dashboard_base_url or '' }}"
+      data-default-api-key="{{ dashboard_api_key or '' }}">
+    <div class="min-h-screen pb-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <div class="container mx-auto p-4">
-        <header class="mb-8 border-b border-slate-700 pb-4 flex justify-between items-center">
-            <div>
-                <h1 class="text-3xl font-bold text-emerald-500">PANOPTICON <span class="text-sm text-slate-500">v1.0.0</span></h1>
-                <p class="text-slate-400">Web-Scale Identity Resolution & AI Intelligence</p>
-            </div>
-            <div class="text-right text-xs text-slate-600">
-                System: ONLINE<br>
-                Security: ENFORCED<br>
-                <span id="auto-login-status" class="text-emerald-400">🔐 Auto-Login Active</span>
-            </div>
-        </header>
+            <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between rounded-2xl bg-slate-900/40 p-5 ring-1 ring-slate-800">
+                <div>
+                    <p class="uppercase tracking-[0.4em] text-xs text-slate-500">Panopticon</p>
+                </div>
+                <div class="space-y-1 text-center md:text-right">
+                    <h1 class="text-3xl font-semibold text-emerald-400">Web-Scale Identity Resolution</h1>
+                    <p class="text-sm text-slate-400">System: <span class="text-emerald-400 font-semibold">ONLINE</span> · Security: <span class="text-emerald-400 font-semibold">ENFORCED</span></p>
+                    <p class="text-xs text-slate-500">Dashboard v1.0.0</p>
+                </div>
+            </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            <!-- Connection Panel (Hidden by Auto-Login) -->
-            <div id="connection-panel" class="bg-slate-800 p-4 rounded shadow md:col-span-3" style="display: none;">
-                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Connection Settings</h2>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5 sm:p-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <label for="config-base-url" class="block text-xs uppercase text-slate-400 mb-1">API Base URL</label>
-                        <input type="text" id="config-base-url" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="https://your-render-api.onrender.com">
+                        <h2 class="text-xl font-semibold text-emerald-400">Connection Settings</h2>
+                        <p class="text-sm text-slate-400">Stored locally (base URL only) so mobile operators can reconnect instantly.</p>
                     </div>
-                    <div>
-                        <label for="config-api-key" class="block text-xs uppercase text-slate-400 mb-1">API Key</label>
-                        <input type="password" id="config-api-key" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-sm" placeholder="your-panopticon-api-key">
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="saveConnection()" class="w-full bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded text-sm">Save & Refresh</button>
-                    </div>
-                    <div class="flex items-end">
-                        <button onclick="clearConnection()" class="w-full bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded text-sm">Clear Credentials</button>
+                    <p class="text-xs text-slate-500">API key lives only in-memory for this session.</p>
+                </div>
+                <div class="mt-4 grid gap-4 md:grid-cols-4">
+                    <label class="flex flex-col gap-2 text-sm">
+                        <span class="text-slate-400 uppercase tracking-wide text-xs">API Base URL</span>
+                        <input type="text" id="config-base-url" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500" placeholder="https://your-render-api.onrender.com">
+                    </label>
+                    <label class="flex flex-col gap-2 text-sm">
+                        <span class="text-slate-400 uppercase tracking-wide text-xs">API Key</span>
+                        <input type="password" id="config-api-key" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500" placeholder="your-panopticon-api-key">
+                    </label>
+                    <div class="flex flex-col gap-2 text-sm md:col-span-2 lg:col-span-1 md:flex-row">
+                        <button type="button" onclick="saveConnection()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 transition-colors rounded-lg px-4 py-2 font-semibold">Save & Refresh</button>
+                        <button type="button" onclick="clearConnection()" class="flex-1 bg-slate-800 hover:bg-slate-700 transition-colors rounded-lg px-4 py-2 font-semibold">Clear Credentials</button>
                     </div>
                 </div>
-                <p id="config-status" class="mt-3 text-xs text-slate-400">Enter your API base URL and key to begin.</p>
-            </div>
+                <p id="config-status" class="mt-3 text-xs text-slate-400" role="status">Enter your API base URL and key to begin.</p>
+            </section>
 
-            <!-- Stats Panel -->
-            <div class="bg-slate-800 p-4 rounded shadow">
-                <h2 class="text-xl font-semibold mb-4 text-emerald-400">System Status</h2>
-                <div id="stats" class="space-y-2">
-                    <div class="flex justify-between"><span>Documents:</span> <span id="stat-docs" class="font-bold">0</span></div>
-                    <div class="flex justify-between"><span>Graph Nodes:</span> <span id="stat-nodes" class="font-bold">0</span></div>
-                    <div class="flex justify-between"><span>Graph Edges:</span> <span id="stat-edges" class="font-bold">0</span></div>
-                    <div class="flex justify-between text-yellow-500"><span>Audit Logs:</span> <span id="stat-audits" class="font-bold">0</span></div>
-                </div>
-                <button onclick="refreshStats()" class="mt-4 bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-sm w-full">Refresh Stats</button>
-            </div>
-
-            <!-- Search Panel -->
-            <div class="bg-slate-800 p-4 rounded shadow md:col-span-2">
-                <h2 class="text-xl font-semibold mb-4 text-emerald-400">Intelligence Search</h2>
-                <div class="flex gap-2 mb-4">
-                    <input type="text" id="search-input" placeholder="Enter Email or Username..." class="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-2 focus:outline-none focus:border-emerald-500">
-                    <select id="search-type" class="bg-slate-700 border border-slate-600 rounded px-3 py-2">
-                        <option value="email">Email</option>
-                        <option value="username">Username</option>
-                    </select>
-                    <button onclick="performSearch()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Search</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                         <h3 class="text-sm text-slate-400 mb-1">Data Matches</h3>
-                         <div id="search-results" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre"></div>
+            <div class="grid gap-6 lg:grid-cols-3">
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-semibold text-emerald-400">System Status</h2>
+                        <button type="button" onclick="refreshStats()" class="text-xs px-3 py-1 rounded-full bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold">Refresh</button>
                     </div>
-                    <div>
-                        <h3 class="text-sm text-slate-400 mb-1">Risk Analysis</h3>
-                        <div id="risk-analysis" class="bg-slate-900 p-2 rounded h-48 overflow-y-auto text-xs font-mono whitespace-pre text-red-300"></div>
+                    <dl class="space-y-3">
+                        <div class="flex items-center justify-between text-sm">
+                            <dt class="text-slate-400 uppercase tracking-wide">Documents</dt>
+                            <dd id="stat-docs" class="font-semibold text-emerald-300 text-lg">0</dd>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <dt class="text-slate-400 uppercase tracking-wide">Graph Nodes</dt>
+                            <dd id="stat-nodes" class="font-semibold text-emerald-300 text-lg">0</dd>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <dt class="text-slate-400 uppercase tracking-wide">Graph Edges</dt>
+                            <dd id="stat-edges" class="font-semibold text-emerald-300 text-lg">0</dd>
+                        </div>
+                        <div class="flex items-center justify-between text-sm">
+                            <dt class="text-slate-400 uppercase tracking-wide">Audit Logs</dt>
+                            <dd id="stat-audits" class="font-semibold text-amber-300 text-lg">0</dd>
+                        </div>
+                    </dl>
+                    <p id="stats-hint" class="mt-4 text-xs text-slate-500">Connect with your API key to see live metrics.</p>
+                </section>
+
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <h2 class="text-xl font-semibold text-blue-400">Recon & Surface Scan</h2>
+                        <span class="text-[10px] uppercase px-2 py-0.5 rounded-full bg-blue-950 text-blue-200">Live</span>
                     </div>
-                </div>
+                    <form class="space-y-3" onsubmit="runRecon(event)">
+                        <label class="text-sm flex flex-col gap-2">
+                            <span class="text-slate-400 uppercase tracking-wide text-xs">Username</span>
+                            <input id="recon-username" type="text" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400" placeholder="shiftcipher">
+                        </label>
+                        <div class="flex flex-col gap-2 sm:flex-row">
+                            <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-500 transition-colors rounded-lg px-4 py-2 font-semibold">Scan Username</button>
+                            <button type="button" onclick="document.getElementById('recon-results').innerText='Awaiting recon request.'" class="flex-1 bg-slate-800 hover:bg-slate-700 transition-colors rounded-lg px-4 py-2 font-semibold">Clear</button>
+                        </div>
+                    </form>
+                    <div class="mt-4">
+                        <p class="text-xs text-slate-400 uppercase tracking-wide mb-2">Results</p>
+                        <pre id="recon-results" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap overflow-y-auto max-h-40">Awaiting recon request.</pre>
+                    </div>
+                </section>
+
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <h2 class="text-xl font-semibold text-purple-400">Face Search</h2>
+                        <span class="text-[10px] uppercase px-2 py-0.5 rounded-full bg-purple-950 text-purple-200">Vector</span>
+                    </div>
+                    <form class="space-y-3" onsubmit="submitFaceSearch(event)">
+                        <label class="text-sm flex flex-col gap-2">
+                            <span class="text-slate-400 uppercase tracking-wide text-xs">Upload image</span>
+                            <input id="face-file" type="file" accept="image/*" class="w-full text-xs text-slate-400 file:mr-4 file:rounded-md file:border-0 file:bg-purple-600 file:text-white file:px-3 file:py-1.5 file:text-sm file:font-semibold hover:file:bg-purple-500">
+                        </label>
+                        <p class="text-xs text-slate-500">Max size: 5&nbsp;MB (configurable via <code class="font-mono">PANOPTICON_MAX_UPLOAD_BYTES</code>).</p>
+                        <button type="submit" class="w-full bg-purple-600 hover:bg-purple-500 transition-colors rounded-lg px-4 py-2 font-semibold">Match Face</button>
+                    </form>
+                    <div class="mt-4">
+                        <p class="text-xs text-slate-400 uppercase tracking-wide mb-2">Matches</p>
+                        <pre id="face-results" class="bg-slate-950/60 border border-slate-800 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap overflow-y-auto max-h-40">No uploads yet.</pre>
+                    </div>
+                </section>
             </div>
 
-            <!-- AI Narrative Panel (Full Width) -->
-              <div class="bg-slate-800 p-4 rounded shadow col-span-1 md:col-span-3">
-                <h2 class="text-xl font-semibold mb-2 text-purple-400 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="grid gap-6 lg:grid-cols-3">
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5 lg:col-span-2">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 class="text-2xl font-semibold text-emerald-400">Intelligence Search</h2>
+                            <p class="text-sm text-slate-400">Query breach records, graph context, and AI narrative in one sweep.</p>
+                        </div>
+                        <p class="text-xs text-slate-500">Backed by <code class="font-mono">/search/person</code></p>
+                    </div>
+                    <form class="mt-4 space-y-4" onsubmit="performSearch(event)">
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <label class="text-sm flex flex-col gap-2">
+                                <span class="text-slate-400 uppercase tracking-wide text-xs">Indicator</span>
+                                <input id="search-input" type="text" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500" placeholder="victim@example.com">
+                            </label>
+                            <label class="text-sm flex flex-col gap-2">
+                                <span class="text-slate-400 uppercase tracking-wide text-xs">Search by</span>
+                                <select id="search-type" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                                    <option value="email">Email</option>
+                                    <option value="username">Username</option>
+                                    <option value="phone">Phone</option>
+                                    <option value="name">Name</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="flex flex-col gap-3 sm:flex-row">
+                            <button type="submit" class="flex-1 bg-emerald-600 hover:bg-emerald-500 transition-colors rounded-lg px-4 py-2 font-semibold">Run Query</button>
+                            <button type="button" onclick="resetSearchPanels()" class="flex-1 bg-slate-800 hover:bg-slate-700 transition-colors rounded-lg px-4 py-2 font-semibold">Reset Panels</button>
+                        </div>
+                    </form>
+                    <div class="mt-6 grid gap-4 lg:grid-cols-2">
+                        <div>
+                            <h3 class="text-sm text-slate-400 uppercase tracking-wide mb-2">Data Matches</h3>
+                            <pre id="search-results" class="bg-slate-950/70 border border-slate-800 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap min-h-[150px] max-h-64 overflow-y-auto">Awaiting query...</pre>
+                        </div>
+                        <div>
+                            <h3 class="text-sm text-slate-400 uppercase tracking-wide mb-2">Risk Analysis</h3>
+                            <pre id="risk-analysis" class="bg-slate-950/70 border border-slate-800 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap min-h-[150px] max-h-64 overflow-y-auto text-red-300">Password health intel will appear here.</pre>
+                        </div>
+                    </div>
+                    <p id="search-meta" class="mt-3 text-xs text-slate-500">Awaiting query.</p>
+                </section>
+
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                    <div class="flex items-center gap-2 mb-3">
+                        <h2 class="text-xl font-semibold text-amber-400">Ingestion Playground</h2>
+                        <span class="text-[10px] uppercase px-2 py-0.5 rounded-full bg-amber-950 text-amber-200">POST /ingest/record</span>
+                    </div>
+                    <form class="space-y-3" onsubmit="submitIngestRecord(event)">
+                        <div class="grid gap-3 sm:grid-cols-2">
+                            <label class="text-sm flex flex-col gap-2">
+                                <span class="text-slate-400 uppercase tracking-wide text-xs">Source Type</span>
+                                <input id="ingest-source" type="text" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400" placeholder="breach_dump">
+                            </label>
+                            <label class="text-sm flex flex-col gap-2">
+                                <span class="text-slate-400 uppercase tracking-wide text-xs">Dataset (optional)</span>
+                                <input id="ingest-dataset" type="text" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400" placeholder="collections-v1">
+                            </label>
+                        </div>
+                        <label class="text-sm flex flex-col gap-2">
+                            <span class="text-slate-400 uppercase tracking-wide text-xs">Source URL (optional)</span>
+                            <input id="ingest-url" type="url" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400" placeholder="https://intel-feed.example/record">
+                        </label>
+                        <label class="text-sm flex flex-col gap-2">
+                            <span class="text-slate-400 uppercase tracking-wide text-xs">Raw Data (JSON)</span>
+                            <textarea id="ingest-json" class="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400 min-h-[140px] font-mono text-xs" spellcheck="false">{
+    "email": "victim@example.com",
+    "username": "shiftcipher",
+    "password_hash": "HASHED_SECRET",
+    "ip_address": "185.12.44.10"
+}</textarea>
+                        </label>
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 transition-colors rounded-lg px-4 py-2 font-semibold text-slate-900">Send to Polyglot Store</button>
+                    </form>
+                    <p id="ingest-status" class="mt-2 text-xs text-slate-400">Records land in SQLite (or Kafka) exactly like crawler output.</p>
+                </section>
+            </div>
+
+            <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                <div class="flex items-center gap-3 mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
-                    AI Intelligence Briefing
-                </h2>
-                <div id="ai-narrative" class="bg-slate-900 p-4 rounded text-sm text-slate-300 font-sans leading-relaxed border-l-4 border-purple-500 min-h-[100px]">
+                    <div>
+                        <h2 class="text-xl font-semibold text-purple-400">AI Intelligence Briefing</h2>
+                        <p class="text-sm text-slate-400">Graph-aware narrative powered by <code class="font-mono">GraphNarrator</code>.</p>
+                    </div>
+                </div>
+                <div id="ai-narrative" class="bg-slate-950/60 border border-purple-500/40 rounded-2xl p-5 text-sm text-slate-200 font-medium leading-relaxed">
                     Select a target to generate an intelligence briefing...
                 </div>
-            </div>
+            </section>
 
-            <!-- Graph Viz -->
-            <div class="bg-slate-800 p-4 rounded shadow col-span-1 md:col-span-2 h-96">
-                <h2 class="text-xl font-semibold mb-2 text-emerald-400">Identity Graph</h2>
-                <div id="mynetwork" class="w-full h-full border border-slate-700 bg-slate-900"></div>
+            <div class="grid gap-6 lg:grid-cols-3">
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5 lg:col-span-2">
+                    <h2 class="text-xl font-semibold text-emerald-400 mb-3">Identity Graph</h2>
+                    <div id="mynetwork" class="h-[360px] sm:h-[420px] rounded-xl border border-slate-800 bg-slate-950/60"></div>
+                    <p id="graph-status" class="mt-3 text-xs text-slate-500">Identity graph idle.</p>
+                </section>
+                <section class="bg-slate-900 rounded-2xl shadow-2xl shadow-black/30 ring-1 ring-slate-800 p-5">
+                    <h2 class="text-xl font-semibold text-emerald-400 mb-3">Geo Trace</h2>
+                    <div id="map" class="h-[360px] sm:h-[420px] rounded-xl border border-slate-800 overflow-hidden"></div>
+                    <p id="geo-status" class="mt-3 text-xs text-slate-500">Run a search to plot geospatial signals.</p>
+                </section>
             </div>
-
-             <!-- Geo Viz -->
-             <div class="bg-slate-800 p-4 rounded shadow col-span-1 h-96">
-                <h2 class="text-xl font-semibold mb-2 text-emerald-400">Geo Trace</h2>
-                <div id="map" class="w-full h-full border border-slate-700 bg-slate-900"></div>
-            </div>
-
         </div>
     </div>
 
     <script>
-        const DEFAULT_BASE_URL = window.location.origin;
         const CONFIG_STORAGE_KEY = "panopticonBaseUrl";
-        
-        // AUTO-LOGIN CONFIGURATION
-        const AUTO_CONFIG = {
-            baseUrl: "https://panopticon-api-847835.onrender.com",
-            apiKey: "pano_bb0712a94164f6df7e4a4741348955bf_2024"
+        const KEY_STORAGE_KEY = "panopticonApiKey";
+        const STATS_INTERVAL_MS = 5000;
+        const serverDefaults = {
+            baseUrl: document.body?.dataset?.defaultBaseUrl?.trim() || "",
+            apiKey: document.body?.dataset?.defaultApiKey?.trim() || ""
         };
-        
+        const DEFAULT_BASE_URL = serverDefaults.baseUrl || window.location.origin;
+
         let clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
         let statsIntervalId = null;
-
-        let map = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO',
-            subdomains: 'abcd',
-            maxZoom: 19
-        }).addTo(map);
+        let mapInstance = null;
         let markers = [];
+        let graphNetwork = null;
 
         document.addEventListener("DOMContentLoaded", () => {
-            // AUTO-LOGIN: Automatically configure and connect
-            clientConfig = AUTO_CONFIG;
-            persistBaseUrl(AUTO_CONFIG.baseUrl);
-            
-            // Connection panel is already hidden via inline style
-            
-            // Update form fields with auto-config (in case user wants to see them)
-            document.getElementById('config-base-url').value = AUTO_CONFIG.baseUrl;
-            document.getElementById('config-api-key').value = AUTO_CONFIG.apiKey;
-            
-            // Show connected status
-            updateConfigStatus(`Auto-connected to ${AUTO_CONFIG.baseUrl}`, false);
-            
-            // Start refreshing stats immediately
-            refreshStats();
-            scheduleStats();
+            initMap();
+            bootstrapFromUrl();
+            loadStoredConfig();
+            applyServerDefaults();
+            hydrateConfigForm();
+            autoConnectIfReady();
+            resetSearchPanels();
         });
+
+        function initMap() {
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) {
+                return;
+            }
+            mapInstance = L.map(mapContainer).setView([20, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(mapInstance);
+            setTimeout(() => mapInstance.invalidateSize(), 200);
+            window.addEventListener('resize', () => {
+                if (mapInstance) {
+                    mapInstance.invalidateSize();
+                }
+            });
+        }
 
         function getApiConfig() {
             return clientConfig;
         }
 
-        function loadStoredBaseUrl() {
+        function loadStoredConfig() {
             try {
                 const storedBaseUrl = localStorage.getItem(CONFIG_STORAGE_KEY);
                 if (storedBaseUrl) {
@@ -164,50 +285,84 @@
             } catch (err) {
                 console.warn("Unable to read stored base URL", err);
             }
+            try {
+                const storedKey =
+                    sessionStorage.getItem(KEY_STORAGE_KEY) ||
+                    localStorage.getItem(KEY_STORAGE_KEY);
+                if (storedKey) {
+                    clientConfig.apiKey = storedKey;
+                }
+            } catch (err) {
+                console.warn("Unable to read stored API key", err);
+            }
         }
 
         function persistBaseUrl(baseUrl) {
             try {
-                localStorage.setItem(CONFIG_STORAGE_KEY, baseUrl);
+                if (baseUrl) {
+                    localStorage.setItem(CONFIG_STORAGE_KEY, baseUrl);
+                } else {
+                    localStorage.removeItem(CONFIG_STORAGE_KEY);
+                }
             } catch (err) {
                 console.warn("Unable to persist base URL", err);
             }
         }
 
+        function persistApiKey(apiKey) {
+            try {
+                if (apiKey) {
+                    localStorage.setItem(KEY_STORAGE_KEY, apiKey);
+                    sessionStorage.setItem(KEY_STORAGE_KEY, apiKey);
+                } else {
+                    localStorage.removeItem(KEY_STORAGE_KEY);
+                    sessionStorage.removeItem(KEY_STORAGE_KEY);
+                }
+            } catch (err) {
+                console.warn("Unable to persist API key", err);
+            }
+        }
+
         function hydrateConfigForm() {
             const config = getApiConfig();
-            document.getElementById('config-base-url').value = config.baseUrl || DEFAULT_BASE_URL;
-            document.getElementById('config-api-key').value = config.apiKey || "";
+            const baseUrlInput = document.getElementById('config-base-url');
+            const apiKeyInput = document.getElementById('config-api-key');
+            if (baseUrlInput) {
+                baseUrlInput.value = config.baseUrl || DEFAULT_BASE_URL;
+            }
+            if (apiKeyInput) {
+                apiKeyInput.value = config.apiKey || "";
+            }
             const message = config.apiKey
                 ? `Ready. Requests target ${config.baseUrl || DEFAULT_BASE_URL}`
-                : "Enter an API key (stored only for this session) to call the API.";
+                : "Enter an API key (stored in localStorage) to call the API.";
             updateConfigStatus(message, !config.apiKey);
         }
 
         function saveConnection() {
-            const baseUrl = document.getElementById('config-base-url').value.trim() || DEFAULT_BASE_URL;
-            const apiKey = document.getElementById('config-api-key').value.trim();
+            const baseUrl = (document.getElementById('config-base-url')?.value || DEFAULT_BASE_URL).trim() || DEFAULT_BASE_URL;
+            const apiKey = (document.getElementById('config-api-key')?.value || "").trim();
             clientConfig = { baseUrl, apiKey };
             persistBaseUrl(baseUrl);
+            persistApiKey(apiKey);
             hydrateConfigForm();
             refreshStats();
             scheduleStats();
         }
 
         function clearConnection() {
-            try {
-                localStorage.removeItem(CONFIG_STORAGE_KEY);
-            } catch (err) {
-                console.warn("Unable to clear stored base URL", err);
-            }
+            persistBaseUrl("");
+            persistApiKey("");
             clientConfig = { baseUrl: DEFAULT_BASE_URL, apiKey: "" };
             hydrateConfigForm();
             updateConfigStatus("Credentials cleared. Enter an API key to continue.", false);
             refreshStats();
+            scheduleStats();
         }
 
         function updateConfigStatus(message, isError = false) {
             const el = document.getElementById('config-status');
+            if (!el) return;
             el.innerText = message;
             el.className = `mt-3 text-xs ${isError ? 'text-red-400' : 'text-slate-400'}`;
         }
@@ -217,8 +372,52 @@
                 clearInterval(statsIntervalId);
             }
             if (getApiConfig().apiKey) {
-                statsIntervalId = setInterval(refreshStats, 5000);
+                statsIntervalId = setInterval(refreshStats, STATS_INTERVAL_MS);
             }
+        }
+
+        function bootstrapFromUrl() {
+            const paramsList = [new URLSearchParams(window.location.search)];
+            if (window.location.hash.includes('=')) {
+                paramsList.push(new URLSearchParams(window.location.hash.slice(1)));
+            }
+            let updated = false;
+            paramsList.forEach(params => {
+                if (!params) return;
+                const baseUrl = params.get('baseUrl') || params.get('api') || params.get('apiBase');
+                const apiKey = params.get('apiKey') || params.get('key');
+                if (baseUrl) {
+                    clientConfig.baseUrl = baseUrl;
+                    persistBaseUrl(baseUrl);
+                    updated = true;
+                }
+                if (apiKey) {
+                    clientConfig.apiKey = apiKey;
+                    persistApiKey(apiKey);
+                    updated = true;
+                }
+            });
+            return updated;
+        }
+
+        function applyServerDefaults() {
+            if (serverDefaults.baseUrl && (!clientConfig.baseUrl || clientConfig.baseUrl === window.location.origin)) {
+                clientConfig.baseUrl = serverDefaults.baseUrl;
+                persistBaseUrl(serverDefaults.baseUrl);
+            }
+            if (serverDefaults.apiKey && !clientConfig.apiKey) {
+                clientConfig.apiKey = serverDefaults.apiKey;
+                persistApiKey(serverDefaults.apiKey);
+            }
+        }
+
+        function autoConnectIfReady() {
+            hydrateConfigForm();
+            if (clientConfig.apiKey && clientConfig.baseUrl) {
+                updateConfigStatus(`Connected to ${clientConfig.baseUrl}`, false);
+            }
+            refreshStats();
+            scheduleStats();
         }
 
         function buildApiUrl(path) {
@@ -240,11 +439,26 @@
             return fetch(buildApiUrl(path), fetchOptions);
         }
 
+        function assertApiKey(action) {
+            if (!getApiConfig().apiKey) {
+                updateConfigStatus(`Configure your API key before ${action}.`, true);
+                return false;
+            }
+            return true;
+        }
+
         async function refreshStats() {
+            const statsHint = document.getElementById('stats-hint');
             if (!getApiConfig().apiKey) {
                 ['stat-docs', 'stat-nodes', 'stat-edges', 'stat-audits'].forEach(id => {
-                    document.getElementById(id).innerText = '--';
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.innerText = '--';
+                    }
                 });
+                if (statsHint) {
+                    statsHint.innerText = "Connect with your API key to see live metrics.";
+                }
                 return;
             }
             try {
@@ -257,34 +471,44 @@
                 document.getElementById('stat-nodes').innerText = data.nodes;
                 document.getElementById('stat-edges').innerText = data.edges;
                 document.getElementById('stat-audits').innerText = data.audit_logs;
+                if (statsHint) {
+                    statsHint.innerText = "Auto-refreshing every 5 seconds while authenticated.";
+                }
                 updateConfigStatus(`Connected to ${getApiConfig().baseUrl}`, false);
             } catch (err) {
+                if (statsHint) {
+                    statsHint.innerText = "Stats refresh failed. Tap refresh to retry.";
+                }
                 updateConfigStatus(`Stats refresh failed: ${err.message}`, true);
             }
         }
 
-        async function performSearch() {
-            if (!getApiConfig().apiKey) {
-                updateConfigStatus("Configure your API key before searching.", true);
+        async function performSearch(event) {
+            event?.preventDefault();
+            if (!assertApiKey('running searches')) {
                 return;
             }
 
-            const val = document.getElementById('search-input').value;
-            const type = document.getElementById('search-type').value;
-            const payload = {};
-            payload[type] = val;
-
+            const val = (document.getElementById('search-input')?.value || "").trim();
+            const type = document.getElementById('search-type')?.value || 'email';
             if (!val) {
-                updateConfigStatus("Enter an Email or Username before searching.", true);
+                updateConfigStatus("Enter an indicator before searching.", true);
                 return;
             }
+            const payload = { [type]: val };
 
-            document.getElementById('search-results').innerText = "Searching...";
-            document.getElementById('risk-analysis').innerText = "";
-            document.getElementById('ai-narrative').innerText = "Generating Intelligence Briefing...";
+            const matchesEl = document.getElementById('search-results');
+            const riskEl = document.getElementById('risk-analysis');
+            const narrativeEl = document.getElementById('ai-narrative');
+            const metaEl = document.getElementById('search-meta');
 
-            markers.forEach(m => map.removeLayer(m));
-            markers = [];
+            if (matchesEl) matchesEl.innerText = "Searching...";
+            if (riskEl) riskEl.innerText = "Running breach analysis...";
+            if (narrativeEl) narrativeEl.innerText = "Generating Intelligence Briefing...";
+            if (metaEl) metaEl.innerText = "Query in-flight...";
+
+            renderMap([]);
+            renderGraph(null);
 
             try {
                 const res = await authFetch('/search/person', {
@@ -296,54 +520,270 @@
                     throw new Error(await res.text());
                 }
                 const data = await res.json();
-                document.getElementById('search-results').innerText = JSON.stringify(data.matches, null, 2);
-                document.getElementById('risk-analysis').innerText = JSON.stringify(data.risk_analysis, null, 2);
-                document.getElementById('ai-narrative').innerText = data.narrative;
+                const matches = Array.isArray(data.matches) ? data.matches : [];
+                if (matchesEl) {
+                    matchesEl.innerText = matches.length
+                        ? JSON.stringify(matches, null, 2)
+                        : "No document matches.";
+                }
+                const riskAnalysis = data.risk_analysis || {};
+                if (riskEl) {
+                    const hasRisk = Object.keys(riskAnalysis).length > 0;
+                    riskEl.innerText = hasRisk
+                        ? JSON.stringify(riskAnalysis, null, 2)
+                        : "No password risk signals returned.";
+                }
+                if (narrativeEl) {
+                    narrativeEl.innerText = data.narrative || "Narrative service returned no content.";
+                }
+                if (metaEl) {
+                    metaEl.innerText = data.truncated
+                        ? "Showing capped results (raise PANOPTICON_MAX_SEARCH_RESULTS for larger exports)."
+                        : `Query complete (${matches.length} matches).`;
+                }
                 renderGraph(data.graph);
-                renderMap(data.geo_trace);
+                renderMap(data.geo_trace || []);
             } catch (err) {
-                document.getElementById('search-results').innerText = "";
-                document.getElementById('risk-analysis').innerText = "";
-                document.getElementById('ai-narrative').innerText = "Search failed.";
+                if (matchesEl) matchesEl.innerText = "";
+                if (riskEl) riskEl.innerText = "";
+                if (narrativeEl) narrativeEl.innerText = "Search failed.";
+                if (metaEl) metaEl.innerText = "Search failed.";
                 updateConfigStatus(`Search failed: ${err.message}`, true);
             }
         }
 
-        function renderMap(locations) {
-            if(!locations) return;
+        async function runRecon(event) {
+            event?.preventDefault();
+            if (!assertApiKey('running reconnaissance')) {
+                return;
+            }
+            const username = (document.getElementById('recon-username')?.value || "").trim();
+            const resultsEl = document.getElementById('recon-results');
+            if (!username) {
+                if (resultsEl) {
+                    resultsEl.innerText = "Enter a username to scan.";
+                }
+                return;
+            }
+            if (resultsEl) {
+                resultsEl.innerText = "Scanning surface web targets...";
+            }
+            try {
+                const res = await authFetch('/recon/username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username })
+                });
+                if (!res.ok) {
+                    throw new Error(await res.text());
+                }
+                const data = await res.json();
+                if (resultsEl) {
+                    resultsEl.innerText = JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                if (resultsEl) {
+                    resultsEl.innerText = "Recon failed.";
+                }
+                updateConfigStatus(`Recon failed: ${err.message}`, true);
+            }
+        }
+
+        async function submitFaceSearch(event) {
+            event?.preventDefault();
+            if (!assertApiKey('running face search')) {
+                return;
+            }
+            const fileInput = document.getElementById('face-file');
+            const resultsEl = document.getElementById('face-results');
+            if (!fileInput || !fileInput.files.length) {
+                if (resultsEl) {
+                    resultsEl.innerText = "Select an image to upload.";
+                }
+                return;
+            }
+            if (resultsEl) {
+                resultsEl.innerText = "Uploading & matching...";
+            }
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            try {
+                const res = await authFetch('/search/face', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) {
+                    throw new Error(await res.text());
+                }
+                const data = await res.json();
+                if (resultsEl) {
+                    resultsEl.innerText = JSON.stringify(data, null, 2);
+                }
+            } catch (err) {
+                if (resultsEl) {
+                    resultsEl.innerText = "Face search failed.";
+                }
+                updateConfigStatus(`Face search failed: ${err.message}`, true);
+            }
+        }
+
+        async function submitIngestRecord(event) {
+            event?.preventDefault();
+            if (!assertApiKey('sending ingestion records')) {
+                return;
+            }
+            const sourceType = (document.getElementById('ingest-source')?.value || 'manual_sample').trim() || 'manual_sample';
+            const dataset = (document.getElementById('ingest-dataset')?.value || "").trim();
+            const url = (document.getElementById('ingest-url')?.value || "").trim();
+            const payloadText = (document.getElementById('ingest-json')?.value || "").trim();
+            const statusEl = document.getElementById('ingest-status');
+            if (!payloadText) {
+                if (statusEl) {
+                    statusEl.innerText = "Add a JSON payload that represents the record.";
+                    statusEl.className = "mt-2 text-xs text-amber-400";
+                }
+                return;
+            }
+            let rawData;
+            try {
+                rawData = JSON.parse(payloadText);
+            } catch (err) {
+                if (statusEl) {
+                    statusEl.innerText = `Invalid JSON: ${err.message}`;
+                    statusEl.className = "mt-2 text-xs text-red-400";
+                }
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.innerText = "Sending record to /ingest/record...";
+                statusEl.className = "mt-2 text-xs text-slate-400";
+            }
+
+            const body = {
+                source_type: sourceType,
+                raw_data: rawData,
+                timestamp: Date.now() / 1000,
+                dataset: dataset || undefined,
+                url: url || undefined
+            };
+
+            try {
+                const res = await authFetch('/ingest/record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!res.ok) {
+                    throw new Error(await res.text());
+                }
+                await res.json().catch(() => ({}));
+                if (statusEl) {
+                    statusEl.innerText = "Record accepted. Check stats after the next refresh.";
+                    statusEl.className = "mt-2 text-xs text-emerald-400";
+                }
+            } catch (err) {
+                if (statusEl) {
+                    statusEl.innerText = `Ingest failed: ${err.message}`;
+                    statusEl.className = "mt-2 text-xs text-red-400";
+                }
+                updateConfigStatus(`Ingest failed: ${err.message}`, true);
+            }
+        }
+
+        function resetSearchPanels() {
+            const matchesEl = document.getElementById('search-results');
+            const riskEl = document.getElementById('risk-analysis');
+            const narrativeEl = document.getElementById('ai-narrative');
+            const metaEl = document.getElementById('search-meta');
+            if (matchesEl) matchesEl.innerText = "Awaiting query...";
+            if (riskEl) riskEl.innerText = "Password health intel will appear here.";
+            if (narrativeEl) narrativeEl.innerText = "Select a target to generate an intelligence briefing...";
+            if (metaEl) metaEl.innerText = "Awaiting query.";
+            renderGraph(null);
+            renderMap([]);
+        }
+
+        function renderMap(locations = []) {
+            if (!mapInstance) {
+                return;
+            }
+            markers.forEach(marker => marker.remove());
+            markers = [];
+            const statusEl = document.getElementById('geo-status');
+            if (!locations.length) {
+                if (statusEl) {
+                    statusEl.innerText = "Run a search to plot geospatial signals.";
+                }
+                mapInstance.setView([20, 0], 2);
+                setTimeout(() => mapInstance.invalidateSize(), 200);
+                return;
+            }
+            const bounds = [];
             locations.forEach(loc => {
-                const marker = L.marker([loc.lat, loc.lon]).addTo(map);
+                const latLng = [loc.lat, loc.lon];
+                const marker = L.marker(latLng).addTo(mapInstance);
                 marker.bindPopup(`<b>IP:</b> ${loc.ip}<br><b>Country:</b> ${loc.country}`);
                 markers.push(marker);
+                bounds.push(latLng);
             });
+            if (bounds.length === 1) {
+                mapInstance.setView(bounds[0], 4);
+            } else {
+                mapInstance.fitBounds(L.latLngBounds(bounds), { padding: [24, 24], maxZoom: 6 });
+            }
+            if (statusEl) {
+                statusEl.innerText = `Plotting ${locations.length} geospatial signal${locations.length > 1 ? 's' : ''}.`;
+            }
+            setTimeout(() => mapInstance.invalidateSize(), 200);
         }
 
         function renderGraph(graphData) {
-            if (!graphData || !graphData.nodes) return;
+            const container = document.getElementById('mynetwork');
+            const statusEl = document.getElementById('graph-status');
+            if (!container) {
+                return;
+            }
+            if (graphNetwork) {
+                graphNetwork.destroy();
+                graphNetwork = null;
+            }
+            if (!graphData || !graphData.nodes || Object.keys(graphData.nodes).length === 0) {
+                container.innerHTML = '<div class="h-full flex items-center justify-center text-center text-sm text-slate-500 px-4">Run a search to build the identity graph.</div>';
+                if (statusEl) {
+                    statusEl.innerText = "Identity graph idle.";
+                }
+                return;
+            }
 
             const nodes = [];
             const edges = [];
 
             for (const [uid, info] of Object.entries(graphData.nodes)) {
                 let color = '#10b981';
-                if(info.type === 'IPAddress') color = '#f59e0b';
-                if(info.type === 'PasswordHash') color = '#ef4444';
-                if(info.type === 'Email') color = '#3b82f6';
-                
-                nodes.push({id: uid, label: uid + "\n" + info.type, color: color});
+                if (info.type === 'IPAddress') color = '#f59e0b';
+                if (info.type === 'PasswordHash') color = '#ef4444';
+                if (info.type === 'Email') color = '#3b82f6';
+
+                nodes.push({ id: uid, label: `${uid}\n${info.type}`, color });
             }
 
-            for (const edge of graphData.edges) {
-                edges.push({from: edge.source, to: edge.target, label: edge.type});
+            for (const edge of graphData.edges || []) {
+                edges.push({ from: edge.source, to: edge.target, label: edge.type });
             }
 
-            const container = document.getElementById('mynetwork');
+            container.innerHTML = '';
             const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
             const options = {
-                physics: { enabled: true },
-                nodes: { shape: 'dot', size: 15, font: { color: '#ffffff' } }
+                physics: { enabled: true, barnesHut: { damping: 0.25 } },
+                nodes: { shape: 'dot', size: 16, font: { color: '#ffffff', size: 12 } },
+                edges: { color: '#64748b', smooth: { type: 'dynamic' }, font: { size: 10, background: '#0f172a' } },
+                interaction: { hover: true }
             };
-            new vis.Network(container, data, options);
+            graphNetwork = new vis.Network(container, data, options);
+            if (statusEl) {
+                statusEl.innerText = `Graph contains ${nodes.length} node${nodes.length === 1 ? '' : 's'} / ${edges.length} edge${edges.length === 1 ? '' : 's'}.`;
+            }
         }
     </script>
 </body>
